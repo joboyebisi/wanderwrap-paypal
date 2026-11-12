@@ -53,12 +53,14 @@ export async function runCircleHarness(input: HarnessInput): Promise<HarnessResu
   campaign.chatAnalysisConsent = Boolean(input.consentToAnalyse || campaign.chatAnalysisConsent);
   campaign.personality = deterministicPersonality(input.messageHistory ?? []);
   campaign.traces.push(trace("recipient-insight", "Recipient signals ready", campaign.personality.join(", ")));
-  await askSpecialist("recipient-insight", `Recipient: ${campaign.recipient}. Consented excerpts: ${(input.messageHistory ?? []).join("\n")}. Summarise only safe gift-relevant signals.`);
+  const bedrockInsight = await askSpecialist("recipient-insight", `Recipient: ${campaign.recipient}. Consented excerpts: ${(input.messageHistory ?? []).join("\n")}. Summarise only safe gift-relevant signals.`);
+  if (bedrockInsight) campaign.traces.push(trace("recipient-insight", "Bedrock synthesis", bedrockInsight.slice(0, 320)));
 
   campaign.gifts = giftSeed;
   campaign.phase = "gift_selection";
   campaign.traces.push(trace("gift-curator", "Shortlist created", "Three distinct, budget-aware directions are ready for a group vote."));
-  await askSpecialist("gift-curator", `Create three gift directions for ${campaign.recipient}, ${campaign.personality.join(", ")}, budget £${campaign.targetAmount}.`);
+  const bedrockCuration = await askSpecialist("gift-curator", `Create three gift directions for ${campaign.recipient}, ${campaign.personality.join(", ")}, budget £${campaign.targetAmount}.`);
+  if (bedrockCuration) campaign.traces.push(trace("gift-curator", "Bedrock curation rationale", bedrockCuration.slice(0, 320)));
 
   campaign.selectedGiftId = "camera";
   campaign.phase = "funding";
