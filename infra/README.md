@@ -79,7 +79,7 @@ Keep `PAYPAL_PAYOUTS_ENABLED=false` until the script reports that the effective 
 
 ## 7. Amazon SES recipient email
 
-The development account uses the DKIM-verified `chatpye.com` identity in `eu-west-2`, with `WanderWrap <hi@chatpye.com>` as the sender. SES remains in Sandbox, so recipient addresses must also belong to a verified identity. Use `hi@chatpye.com` as the first test recipient, or request production access from the SES account dashboard before testing arbitrary addresses.
+The development account uses the DKIM-verified `chatpye.com` identity in `eu-west-2`, with `WanderWrap <hi@chatpye.com>` as the sender. SES production access is enabled, so recipient addresses do not need separate verification. Continue using transactional-only content, monitor bounces and complaints, and honour the SES suppression list.
 
 ## Operational checks
 

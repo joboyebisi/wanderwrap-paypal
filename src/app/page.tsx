@@ -307,7 +307,7 @@ export default function Home() {
             <label className="simple-field"><span>Test recipient email</span><input type="email" value={recipientEmail} onChange={(event) => setRecipientEmail(event.target.value)} placeholder="recipient@example.com"/></label>
             <label className="simple-field"><span>Your message</span><textarea value={giftMessage} onChange={(event) => setGiftMessage(event.target.value)} maxLength={600}/></label>
             <button className="primary-button" disabled={busy || claimSent} onClick={sendRecipientClaim}>{claimSent ? "Private reveal sent ✓" : "Email the private reveal"} <span>✦</span></button>
-            <small>SES sandbox note: until AWS grants production access, the recipient address must be verified. Use hi@chatpye.com for this first test.</small>
+            <small>Ribbon sends a transactional claim email from WanderWrap's DKIM-verified domain. Use an address you control for the sandbox payment test.</small>
           </div></>}
       </section>
 

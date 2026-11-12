@@ -171,11 +171,10 @@ Please report vulnerabilities according to [SECURITY.md](SECURITY.md).
 
 ## Project status
 
-The product is ready for sandbox integration testing. The live development environment has Telegram, DynamoDB, Bedrock permissions, PayPal collection credentials and a DKIM-verified SES domain configured. Remaining account-level work is:
+The product is ready for sandbox integration testing. The live development environment has Telegram, DynamoDB, Bedrock permissions, PayPal collection credentials, a DKIM-verified SES domain, and SES production sending access configured. Remaining account-level work is:
 
 - enable Payouts on the existing PayPal Sandbox Merchant app and wait for the updated OAuth scope;
 - subscribe the existing PayPal webhook to payout batch and item events;
-- request Amazon SES production access before sending claim emails to unverified domains;
 - record and verify the two-account Telegram end-to-end demo.
 
 ## Hackathon materials

@@ -183,7 +183,7 @@ https://mvfjnli2kj.execute-api.eu-west-2.amazonaws.com
 6. Sign in with a **Personal PayPal Sandbox account** from PayPal Developer Dashboard, not a normal PayPal account.
 7. Approve checkout and return to Telegram. Allow a few seconds for capture reconciliation.
 8. Confirm the Circle shows GBP 10 verified, one contributor, and no individual amount in group updates.
-9. As the organiser, send the private reveal to `hi@chatpye.com` while SES remains in Sandbox.
+9. As the organiser, send the private reveal to an email address you control.
 10. Open the email, unwrap the gift, and confirm the product clearly marks the PayPal payout as paused until Payouts scope is enabled.
 
 Do not use real PayPal credentials or real money. Judges who need a Sandbox login should receive it privately; never place credentials in this public document.
@@ -235,5 +235,5 @@ Amazon Bedrock, Amazon Nova 2 Lite, and OpenAI Codex.
 - [ ] Add the unlisted YouTube demo URL.
 - [ ] Capture the five product screenshots listed above.
 - [ ] Enable PayPal Payouts on the existing Sandbox Merchant app and rerun `npm run paypal:verify`.
-- [ ] Request SES production access before emailing arbitrary judge addresses.
+- [x] Verify the SES sender domain and obtain production sending access.
 - [ ] Recheck the public repository for secrets before the final push.
