@@ -87,6 +87,10 @@ Resources:
                   - bedrock:InvokeModel
                   - bedrock:InvokeModelWithResponseStream
                 Resource: '*'
+              - Effect: Allow
+                Action:
+                  - ses:SendEmail
+                Resource: '*'
       Tags:
         - { Key: Project, Value: WanderWrap-Circles }
 
@@ -239,12 +243,14 @@ Resources:
           PAYPAL_WEBHOOK_ID: !Sub '{{resolve:secretsmanager:${CredentialsSecretId}:SecretString:PAYPAL_WEBHOOK_ID}}'
           PAYPAL_OAUTH_STATE_SECRET: !Sub '{{resolve:secretsmanager:${CredentialsSecretId}:SecretString:PAYPAL_OAUTH_STATE_SECRET}}'
           PAYPAL_ENV: sandbox
+          PAYPAL_PAYOUTS_ENABLED: 'false'
           TELEGRAM_BOT_TOKEN: !Sub '{{resolve:secretsmanager:${CredentialsSecretId}:SecretString:TELEGRAM_BOT_TOKEN}}'
           TELEGRAM_WEBHOOK_SECRET: !Sub '{{resolve:secretsmanager:${CredentialsSecretId}:SecretString:TELEGRAM_WEBHOOK_SECRET}}'
           TELEGRAM_BOT_USERNAME: !Sub '{{resolve:secretsmanager:${CredentialsSecretId}:SecretString:TELEGRAM_BOT_USERNAME}}'
           CREDENTIALS_REVISION: !Ref CredentialsRevision
           DYNAMODB_TABLE: !Ref CirclesTable
           BEDROCK_MODEL_ID: eu.amazon.nova-2-lite-v1:0
+          SES_FROM_EMAIL: WanderWrap <hi@chatpye.com>
           ALLOW_DEMO_AUTH: 'false'
           NODE_OPTIONS: --enable-source-maps
       Tags:

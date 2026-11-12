@@ -1,0 +1,210 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>WanderWrap Circles - PayPal AI Hackathon</title>
+<style>
+  @page { size: 13.333in 7.5in; margin: 0; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; background: #d7d2ca; color: #173e33; font-family: Arial, sans-serif; }
+  .slide { width: 13.333in; height: 7.5in; page-break-after: always; position: relative; overflow: hidden; padding: .56in .66in .48in; background: #f7f1e7; }
+  .slide:last-child { page-break-after: auto; }
+  .dark { background: #0f4638; color: #fffaf1; }
+  .plum { background: #321b38; color: #fff8ef; }
+  .coral { color: #e75548; }
+  .eyebrow { font-size: 10px; letter-spacing: .14em; text-transform: uppercase; font-weight: 800; color: #e75548; margin-bottom: 16px; }
+  .dark .eyebrow, .plum .eyebrow { color: #ffb09c; }
+  h1, h2, h3 { font-family: Georgia, serif; letter-spacing: -.035em; margin: 0; }
+  h1 { font-size: 43px; line-height: 1.06; }
+  h2 { font-size: 31px; line-height: 1.08; }
+  h3 { font-size: 18px; }
+  p { font-size: 16px; line-height: 1.45; }
+  .sub { max-width: 7.3in; color: #53655f; }
+  .dark .sub, .plum .sub { color: #d8d2dc; }
+  .footer { position: absolute; left: .66in; right: .66in; bottom: .24in; display: flex; justify-content: space-between; align-items: center; font-size: 8px; letter-spacing: .08em; opacity: .75; text-transform: uppercase; }
+  .logo { width: 62px; height: 62px; object-fit: contain; border-radius: 17px; background: #fff; padding: 3px; }
+  .cover-grid { display: grid; grid-template-columns: 43% 57%; height: 100%; margin: -.56in -.66in -.48in; }
+  .cover-copy { padding: .72in .58in .55in .7in; position: relative; }
+  .cover-art { background: url('../../docs/assets/wanderwrap-circles-devpost-thumbnail.png') center/cover no-repeat; position: relative; }
+  .cover-art:after { content: ''; position: absolute; inset: 0; box-shadow: inset 35px 0 45px #f7f1e7; }
+  .feature-label { display: inline-block; margin-top: 26px; background: #173e33; color: #fff; padding: 9px 13px; border-radius: 999px; font-size: 10px; font-weight: 700; }
+  .metric-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 22px; margin-top: 42px; }
+  .metric { border-top: 4px solid #e75548; padding-top: 16px; }
+  .metric b { display: block; font-family: Georgia, serif; font-size: 34px; color: #e75548; margin-bottom: 8px; }
+  .metric span { display: block; font-size: 14px; line-height: 1.4; }
+  .journey { display: grid; grid-template-columns: repeat(6, 1fr); gap: 12px; margin-top: 38px; }
+  .step { position: relative; min-height: 235px; background: #fffaf3; border-radius: 14px; padding: 18px 14px; border: 1px solid #e7ddd0; }
+  .step:after { content: ''; position: absolute; top: 42px; right: -13px; width: 14px; height: 2px; background: #e75548; z-index: 3; }
+  .step:last-child:after { display: none; }
+  .step i { font-style: normal; font-size: 29px; display: block; margin-bottom: 19px; }
+  .step b { display: block; font-family: Georgia, serif; font-size: 16px; margin-bottom: 9px; }
+  .step span { font-size: 11px; line-height: 1.4; color: #5b6c66; }
+  .agents { display: grid; grid-template-columns: 1fr 1fr; gap: 12px 24px; margin-top: 25px; }
+  .agent { display: grid; grid-template-columns: 42px 94px 1fr; align-items: center; border-bottom: 1px solid #3f6a5e; padding: 8px 0; }
+  .agent i { width: 34px; height: 34px; display: grid; place-items: center; border-radius: 50%; background: #ff8268; color: #321b38; font-style: normal; font-weight: 900; }
+  .agent b { font-family: Georgia, serif; font-size: 15px; }
+  .agent span { font-size: 11px; color: #c8ded6; }
+  .boundary { margin-top: 26px; background: #ff8268; color: #321b38; border-radius: 12px; padding: 12px 16px; text-align: center; font-size: 12px; font-weight: 800; }
+  .trust-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 28px; margin-top: 30px; }
+  .trust-box { border: 1px solid #e2d5c6; border-radius: 16px; background: #fffaf3; padding: 22px; min-height: 270px; }
+  .trust-box h3 { margin-bottom: 18px; }
+  .trust-box ol, .trust-box ul { margin: 0; padding-left: 20px; }
+  .trust-box li { font-size: 13px; line-height: 1.45; margin-bottom: 11px; }
+  .status { display: inline-block; padding: 7px 10px; border-radius: 999px; font-size: 9px; font-weight: 800; text-transform: uppercase; letter-spacing: .08em; }
+  .live { background: #d5eee3; color: #155844; }
+  .gate { background: #ffe1b9; color: #8a4a1d; }
+  .architecture { display: grid; grid-template-columns: 1.1fr .8fr 1.1fr; gap: 30px; align-items: center; margin-top: 24px; }
+  .stack { display: grid; gap: 10px; }
+  .node { background: #fffaf3; color: #173e33; border: 1px solid #d8cbbd; border-radius: 12px; padding: 13px 15px; font-size: 12px; font-weight: 700; text-align: center; }
+  .core { background: #ff8268; color: #321b38; padding: 30px 18px; border-radius: 50%; text-align: center; aspect-ratio: 1; display: grid; place-items: center; box-shadow: 0 16px 35px #0002; }
+  .core b { font-family: Georgia, serif; font-size: 24px; display: block; }
+  .core span { font-size: 11px; }
+  .proof { display: grid; grid-template-columns: 1fr 1fr; gap: 28px; margin-top: 26px; }
+  .proof h3 { padding-bottom: 12px; border-bottom: 3px solid #e75548; }
+  .proof ul { list-style: none; padding: 0; margin: 17px 0 0; }
+  .proof li { position: relative; padding: 0 0 13px 25px; font-size: 13px; line-height: 1.35; }
+  .proof li:before { content: '✓'; position: absolute; left: 0; color: #2c8166; font-weight: 900; }
+  .proof .gated li:before { content: '○'; color: #d67a39; }
+  .loop { display: grid; grid-template-columns: repeat(4, 1fr); gap: 24px; margin-top: 42px; align-items: center; }
+  .loop-item { min-height: 190px; background: #fffaf3; border-radius: 50%; border: 1px solid #d8cbbd; padding: 38px 25px; text-align: center; position: relative; }
+  .loop-item:after { content: '›'; position: absolute; right: -21px; top: 65px; font-size: 46px; color: #e75548; }
+  .loop-item:last-child:after { display: none; }
+  .loop-item b { display: block; font-family: Georgia, serif; font-size: 17px; margin-bottom: 8px; }
+  .loop-item span { font-size: 11px; line-height: 1.4; }
+  .ask { display: grid; grid-template-columns: 1fr 1fr; gap: 38px; margin-top: 34px; }
+  .ask > div { border-left: 4px solid #ff8268; padding-left: 18px; }
+  .ask b { font-family: Georgia, serif; font-size: 20px; display: block; margin-bottom: 7px; }
+  .ask span { font-size: 13px; color: #d0dfda; line-height: 1.45; }
+</style>
+</head>
+<body>
+  <section class="slide">
+    <div class="cover-grid">
+      <div class="cover-copy">
+        <img class="logo" src="../../public/brand/wanderwrap-mark.png" alt="" />
+        <div class="eyebrow" style="margin-top:35px">PayPal AI Hackathon · 2026</div>
+        <h1>Group gifting,<br><span class="coral">coordinated by agents.</span></h1>
+        <p class="sub">WanderWrap Circles turns a Telegram conversation into a thoughtful gift, verified PayPal contributions, and an emotional recipient reveal.</p>
+        <span class="feature-label">A feature of WanderWrap</span>
+        <div class="footer"><span>wanderwrap.co.uk</span><span>01</span></div>
+      </div>
+      <div class="cover-art"></div>
+    </div>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">The coordination problem</div>
+    <h2>One warm idea becomes one person's admin job</h2>
+    <p class="sub">The group already has the people and intent. The missing layer is a coordinator that remembers the moment, maintains context, and moves the work forward safely.</p>
+    <div class="metric-grid">
+      <div class="metric"><b>Scattered</b><span>Ideas, dates, votes, links, and messages live in different places.</span></div>
+      <div class="metric"><b>Awkward</b><span>Someone has to chase replies and payments without embarrassing anyone.</span></div>
+      <div class="metric"><b>Transactional</b><span>A payment page collects money but loses the human story behind the gift.</span></div>
+    </div>
+    <div class="footer"><span>WanderWrap Circles</span><span>02</span></div>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">The working experience</div>
+    <h2>One Telegram prompt starts the whole journey</h2>
+    <div class="journey">
+      <div class="step"><i>🎂</i><b>Create</b><span>The organiser names the person, moment, date, and target.</span></div>
+      <div class="step"><i>✨</i><b>Curate</b><span>Agents turn consented clues into explainable gift directions.</span></div>
+      <div class="step"><i>🔗</i><b>Invite</b><span>Exact group and DM links bring each member into the same Circle.</span></div>
+      <div class="step"><i>🅿️</i><b>Contribute</b><span>Members approve private PayPal Sandbox payments.</span></div>
+      <div class="step"><i>✅</i><b>Verify</b><span>Only signed, completed captures increase the shared total.</span></div>
+      <div class="step"><i>🎀</i><b>Reveal</b><span>Ribbon emails a private, expiring unwrapping experience.</span></div>
+    </div>
+    <div class="footer"><span>Telegram to PayPal to recipient</span><span>03</span></div>
+  </section>
+
+  <section class="slide dark">
+    <div class="eyebrow">The agent team</div>
+    <h2>Eight specialists, one coherent coordinator</h2>
+    <div class="agents">
+      <div class="agent"><i>W</i><b>Wrap</b><span>Routes the work and explains progress.</span></div>
+      <div class="agent"><i>Sp</i><b>Spark</b><span>Tracks explicit birthdays and events.</span></div>
+      <div class="agent"><i>Sa</i><b>Sage</b><span>Extracts safe, consented preference signals.</span></div>
+      <div class="agent"><i>Sc</i><b>Scout</b><span>Builds varied, budget-aware gift directions.</span></div>
+      <div class="agent"><i>R</i><b>Rally</b><span>Coordinates invites, reminders, and group tone.</span></div>
+      <div class="agent"><i>P</i><b>Penny</b><span>Creates PayPal orders and reconciles captures.</span></div>
+      <div class="agent"><i>Po</i><b>Porter</b><span>Prepares purchase and delivery handoffs.</span></div>
+      <div class="agent"><i>Ri</i><b>Ribbon</b><span>Sends the claim and builds the reveal.</span></div>
+    </div>
+    <div class="boundary">Models propose. The harness owns identity, state, permissions, idempotency, and side effects.</div>
+    <div class="footer"><span>Amazon Bedrock + custom harness</span><span>04</span></div>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">PayPal trust boundary</div>
+    <h2>Money moves only when verified application state allows it</h2>
+    <div class="trust-grid">
+      <div class="trust-box"><h3>Contribution flow <span class="status live">Working</span></h3><ol><li>Log in with PayPal links the Sandbox identity.</li><li>Orders v2 creates an idempotent contribution order.</li><li>The member approves payment on PayPal.</li><li>Server capture and signed webhook reconciliation update DynamoDB.</li><li>The group receives aggregate progress without private amounts.</li></ol></div>
+      <div class="trust-box"><h3>Recipient payout <span class="status gate">Fail closed</span></h3><ol><li>Verified target unlocks the organiser's reveal action.</li><li>SES delivers a private 30-day claim link.</li><li>The recipient unwraps the gift and reads real messages.</li><li>Payout stays blocked while the app lacks PayPal Payouts scope.</li><li>Future item webhooks, not a redirect, will confirm success.</li></ol></div>
+    </div>
+    <div class="footer"><span>No crypto · no internal wallet · no fake balance</span><span>05</span></div>
+  </section>
+
+  <section class="slide plum">
+    <div class="eyebrow">System architecture</div>
+    <h2>A model can reason without becoming the system of record</h2>
+    <div class="architecture">
+      <div class="stack"><div class="node">Telegram group + Bot API</div><div class="node">Telegram Mini App + TMA.js</div><div class="node">Recipient email + reveal</div></div>
+      <div class="core"><div><b>Circle harness</b><span>routing · policy · approvals · traces</span></div></div>
+      <div class="stack"><div class="node">Amazon Bedrock / Nova 2 Lite</div><div class="node">PayPal Identity + Orders + Webhooks</div><div class="node">DynamoDB + SES on AWS</div></div>
+    </div>
+    <div class="boundary">Lambda + API Gateway provide one HTTPS surface for Telegram, PayPal callbacks, and the Mini App.</div>
+    <div class="footer"><span>eu-west-2 development environment</span><span>06</span></div>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">Build evidence</div>
+    <h2>The MVP is real where authority exists and explicit where it does not</h2>
+    <div class="proof">
+      <div><h3>Working now</h3><ul><li>Telegram group and DM entry points</li><li>Signed Mini App authentication</li><li>Bedrock specialist calls and visible traces</li><li>PayPal identity, order, capture, and webhook ledger</li><li>DynamoDB campaign and claim state</li><li>DKIM-verified SES recipient email</li><li>Private recipient unwrapping experience</li></ul></div>
+      <div class="gated"><h3>Account or partner gates</h3><ul><li>Enable PayPal Payouts on the existing Merchant app</li><li>Reconcile payout batch and item webhooks</li><li>Request SES production access for arbitrary recipients</li><li>Connect retailer purchasing behind approval</li><li>Complete compliance review for private causes</li><li>Keep investment collections outside the MVP</li></ul></div>
+    </div>
+    <div class="footer"><span>Truthful product state</span><span>07</span></div>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">The demonstration</div>
+    <h2>Two Telegram accounts prove coordination end to end</h2>
+    <div class="journey" style="grid-template-columns:repeat(5,1fr)">
+      <div class="step"><i>1</i><b>Organiser</b><span>Adds the bot and creates Sarah's birthday Circle.</span></div>
+      <div class="step"><i>2</i><b>Friend</b><span>Joins from the group link and opts into DM updates.</span></div>
+      <div class="step"><i>3</i><b>PayPal</b><span>Links a Personal Sandbox account and contributes £10.</span></div>
+      <div class="step"><i>4</i><b>Group</b><span>Receives the verified total with private amounts protected.</span></div>
+      <div class="step"><i>5</i><b>Recipient</b><span>Opens the email and unwraps the messages and money-gift reveal.</span></div>
+    </div>
+    <div class="boundary" style="background:#173e33;color:#fff">The final screen clearly states that no payout occurred while Payouts remains unavailable.</div>
+    <div class="footer"><span>Sarah's birthday · sandbox test</span><span>08</span></div>
+  </section>
+
+  <section class="slide">
+    <div class="eyebrow">WanderWrap product loop</div>
+    <h2>Circles extends the parent product into social distribution</h2>
+    <p class="sub">The parent WanderWrap product owns the consent-first gifting decision layer. Circles adds group coordination and creates a recipient-to-organiser loop inside Telegram.</p>
+    <div class="loop">
+      <div class="loop-item"><b>A group starts a Circle</b><span>One birthday or celebration creates a clear shared purpose.</span></div>
+      <div class="loop-item"><b>The recipient feels the difference</b><span>The gift arrives with context, messages, and a deliberate reveal.</span></div>
+      <div class="loop-item"><b>The recipient becomes a user</b><span>A direct invitation turns appreciation into the next Circle.</span></div>
+      <div class="loop-item"><b>WanderWrap reaches another group</b><span>Each completed event can start the next coordinated gift.</span></div>
+    </div>
+    <div class="footer"><span>WanderWrap Circles is a feature, not a separate company</span><span>09</span></div>
+  </section>
+
+  <section class="slide dark">
+    <div class="eyebrow">What we need next</div>
+    <h1>Help us finish the final<br><span style="color:#ffb09c">account-level mile.</span></h1>
+    <div class="ask">
+      <div><b>PayPal Payouts access</b><span>Enable the existing Sandbox Merchant app, validate item webhooks, and complete the recipient claim.</span></div>
+      <div><b>Two-account demo</b><span>Run the Telegram group flow, capture evidence, and publish a three-minute walkthrough.</span></div>
+      <div><b>SES production access</b><span>Move beyond verified-domain recipients while maintaining transactional-only sending and suppression controls.</span></div>
+      <div><b>Design partners</b><span>Test real birthday and celebration Circles before expanding to controlled private causes.</span></div>
+    </div>
+    <div class="boundary">Great gifts. Together.</div>
+    <div class="footer"><span>github.com/joboyebisi/wanderwrap-paypal</span><span>10</span></div>
+  </section>
+</body>
+</html>

@@ -1,5 +1,7 @@
 <div align="center">
 
+<img src="public/brand/wanderwrap-mark.png" alt="WanderWrap ribbon mark" width="104" />
+
 # WanderWrap Circles 🎁
 
 ### Great gifts. Together.
@@ -17,6 +19,8 @@ An agentic Telegram Mini App that helps friends remember meaningful moments, und
 
 </div>
 
+![WanderWrap Circles coordinates a Telegram group gift from conversation to PayPal contribution and recipient reveal](docs/assets/wanderwrap-circles-devpost-thumbnail.png)
+
 ---
 
 ## Why WanderWrap
@@ -33,6 +37,8 @@ The AI proposes; people decide. No chat analysis, fundraising, purchase, payout 
 4. **Fund privately** — Rally coordinates participation and Penny reconciles completed PayPal captures without exposing individual amounts.
 5. **Approve and fulfil** — Porter checks the final gift, price, timing and delivery plan, then pauses for organiser approval.
 6. **Unwrap emotionally** — Ribbon turns real contributor messages into a delightful recipient reveal for physical, experience or money gifts.
+
+The current sandbox build completes the journey through a verified contribution and an emailed, expiring recipient reveal. Money-gift payout remains visibly locked until PayPal grants the app's Payouts scope.
 
 ### Telegram commands
 
@@ -71,9 +77,11 @@ flowchart LR
   H --> PP[PayPal Orders + Identity]
   PP --> WH[Verified PayPal webhooks]
   WH --> DB
+  H --> SES[Amazon SES claim email]
+  SES --> R[Private recipient reveal]
   H --> A{Human approval}
   A --> F[Purchase / fulfilment handoff]
-  F --> R[Recipient reveal]
+  F --> R
 ```
 
 The custom harness—not the model—owns state transitions, tool execution, idempotency and approval checks. Amazon Bedrock specialists are advisory and use the model-agnostic Converse API. When Bedrock is unavailable locally, deterministic specialists keep the complete product demo usable.
@@ -85,6 +93,7 @@ The custom harness—not the model—owns state transitions, tool execution, ide
 - **Return:** WanderWrap captures server-side and brings the member back to the active Circle.
 - **Ledger:** only verified `COMPLETED` captures increase a campaign total. A Circle is a virtual ledger—not a bank account or crypto wallet.
 - **Privacy:** group members see the aggregate goal, never another contributor's amount.
+- **Claim:** Ribbon sends an expiring private reveal by Amazon SES. Penny releases money only after PayPal Payouts is enabled and item-level status is verified.
 
 ## Technology
 
@@ -92,6 +101,7 @@ The custom harness—not the model—owns state transitions, tool execution, ide
 - Official `@tma.js` Mini App SDK with capability detection and Bot API
 - Amazon Bedrock Converse API with Amazon Nova 2 Lite by default
 - PayPal Orders v2, Identity API and verified webhooks
+- Amazon SES with DKIM-verified sender identity
 - DynamoDB single-table persistence
 - AWS App Runner and ECR deployment
 
@@ -133,11 +143,13 @@ npm audit
 | `PAYPAL_CLIENT_ID` / `PAYPAL_CLIENT_SECRET` | Sandbox or live REST application credentials; server only |
 | `PAYPAL_WEBHOOK_ID` | Verifies PayPal webhook signatures |
 | `PAYPAL_OAUTH_STATE_SECRET` | Signs short-lived Log in with PayPal state |
+| `PAYPAL_PAYOUTS_ENABLED` | Fail-closed feature flag; keep `false` until the effective access token includes Payouts |
 | `PAYPAL_ENV` | `sandbox` or `live` |
 | `AWS_REGION` | Bedrock and DynamoDB source region; default `eu-west-2` |
 | `BEDROCK_MODEL_ID` | Bedrock model or inference profile ID |
 | `BEDROCK_GUARDRAIL_ID` / `BEDROCK_GUARDRAIL_VERSION` | Optional guardrail applied to every specialist call |
 | `DYNAMODB_TABLE` | Enables durable AWS persistence when set |
+| `SES_FROM_EMAIL` | Verified Amazon SES sender for recipient claim invitations |
 | `ALLOW_DEMO_AUTH` | Local-only Telegram authentication bypass; must be `false` in AWS |
 
 Never commit `.env.local`, PayPal secrets, bot tokens or AWS credentials.
@@ -159,12 +171,18 @@ Please report vulnerabilities according to [SECURITY.md](SECURITY.md).
 
 ## Project status
 
-The product is ready for sandbox integration testing. The remaining account-level setup is:
+The product is ready for sandbox integration testing. The live development environment has Telegram, DynamoDB, Bedrock permissions, PayPal collection credentials and a DKIM-verified SES domain configured. Remaining account-level work is:
 
-- authenticate AWS and confirm Bedrock access to the selected inference profile;
-- configure the PayPal Sandbox app, Identity return URL and webhook ID;
-- configure the Telegram Main Mini App, menu button and webhook in BotFather;
-- deploy the container and run the end-to-end test matrix.
+- enable Payouts on the existing PayPal Sandbox Merchant app and wait for the updated OAuth scope;
+- subscribe the existing PayPal webhook to payout batch and item events;
+- request Amazon SES production access before sending claim emails to unverified domains;
+- record and verify the two-account Telegram end-to-end demo.
+
+## Hackathon materials
+
+- [Devpost project-details draft](docs/DEVPOST_SUBMISSION.md)
+- [Product requirements](docs/PRD.md)
+- [Custom agent harness](docs/AGENT_HARNESS.md)
 
 ## Contributing
 

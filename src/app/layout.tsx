@@ -4,6 +4,7 @@ import "./globals.css";
 export const metadata: Metadata = {
   title: "WanderWrap Circles",
   description: "Great gifts. Together. AI-powered group gifting with PayPal.",
+  icons: { icon: "/brand/wanderwrap-mark.png", apple: "/brand/wanderwrap-mark.png" },
 };
 
 export const viewport: Viewport = {

@@ -42,6 +42,7 @@ export interface CircleCampaign {
   id: string;
   slug: string;
   chatId: string;
+  organizerId?: string;
   recipient: string;
   occasion: string;
   eventDate: string;

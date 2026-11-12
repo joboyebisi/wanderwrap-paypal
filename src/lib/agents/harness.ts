@@ -33,6 +33,7 @@ function newCampaign(input: HarnessInput): CircleCampaign {
   const created = now();
   return {
     id: crypto.randomUUID(), slug: `${recipient.toLowerCase()}-${Date.now().toString(36)}`, chatId: input.chatId,
+    organizerId: input.actorId,
     recipient, occasion, eventDate, phase: "discovery", targetAmount, raisedAmount: 0, currency: "GBP",
     contributorCount: 0, expectedContributors, chatAnalysisConsent: false, personality: [], gifts: [], traces: [],
     createdAt: created, updatedAt: created,

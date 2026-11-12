@@ -20,6 +20,21 @@ Circle Conductor (Wrap)
 
 The custom harness in `src/lib/agents/harness.ts` owns campaign state, specialist sequencing, traces, and approval boundaries. Amazon Bedrock specialists are deliberately advisory. Deterministic application code owns payments, persistence, permissions, and state transitions.
 
+## Demonstrable handoffs
+
+The sandbox journey produces durable evidence that multiple specialists are doing different work rather than presenting one model behind several names:
+
+| Handoff | Input | Agent output | Deterministic boundary |
+| --- | --- | --- | --- |
+| Wrap to Sage | recipient, occasion, consented excerpts | safe preference signals | no analysis before recorded consent |
+| Sage to Scout | bounded signals and budget | three reasoned gift directions | hard target and currency remain application state |
+| Scout to Rally | selected direction and member count | contribution plan and prompts | reminders never reveal who has or has not paid |
+| Rally to Penny | approved target | PayPal order and aggregate ledger | only verified captures move the total |
+| Penny to Ribbon | target reached and organiser email action | private 30-day reveal | raw token is emailed once; DynamoDB stores its SHA-256 hash |
+| Ribbon to Penny | recipient opens reveal | claim becomes opened | payout remains blocked until scope and item status are verified |
+
+Each handoff adds an `AgentTrace` with `complete`, `waiting`, or `blocked` status. The Mini App renders those traces in the Circle, which makes the agent team inspectable without exposing internal prompts.
+
 ## Why this split
 
 - A routing agent keeps Telegram replies coherent.
@@ -63,9 +78,15 @@ Explicit dates can be saved with `/remember Name, occasion, YYYY-MM-DD`. Spark s
 
 Every order has a Circle reference and idempotency key. A Circle total is derived only from `COMPLETED` captures. The webhook signature is verified with PayPal before a capture is recorded. A Circle is a virtual campaign ledger, not a bank account, wallet, or pooled-balance claim.
 
+## Recipient claim and email authority
+
+Ribbon can send an Amazon SES email only when Telegram authentication succeeds, the Circle exists, and verified funding reaches the target. New Circles record the organiser's Telegram ID, so another member cannot create the recipient claim. Claim links expire after 30 days, and DynamoDB receives only a SHA-256 hash of the random bearer token.
+
+`PAYPAL_PAYOUTS_ENABLED` defaults to `false`. This flag is an additional deployment gate, not proof of account authority. It may be enabled only after `npm run paypal:verify` confirms the access token includes the Payouts scope. The production payout worker must still wait for item-level webhook state before marking a claim paid.
+
 ## State and deployment
 
-Local development uses bounded in-memory stores. Setting `DYNAMODB_TABLE` switches campaigns, important events, and contributions to the AWS single-table layout defined in `infra/apprunner.yaml`.
+Local development uses bounded in-memory stores. Setting `DYNAMODB_TABLE` switches campaigns, important events, contributions, Circle members, and recipient claims to the AWS single-table layout defined in `infra/circles-lambda-dev.yaml`.
 
 ## Minimum eval set before production
 

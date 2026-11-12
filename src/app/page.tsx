@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import Image from "next/image";
 import type { CircleCampaign } from "@/lib/agents/types";
 import {
   initializeTelegram,
@@ -32,6 +33,9 @@ export default function Home() {
   const [showDetails, setShowDetails] = useState(false);
   const [circleLinks, setCircleLinks] = useState<{ miniApp: string; dmOptIn: string } | null>(null);
   const [subscribed, setSubscribed] = useState(false);
+  const [recipientEmail, setRecipientEmail] = useState("hi@chatpye.com");
+  const [giftMessage, setGiftMessage] = useState("Happy birthday, Sarah. We hope this gift makes your next adventure even brighter.");
+  const [claimSent, setClaimSent] = useState(false);
 
   const showToast = useCallback((message: string) => {
     setToast(message);
@@ -226,12 +230,37 @@ export default function Home() {
     else { await navigator.clipboard.writeText(circleLinks.miniApp); showToast("Circle link copied"); }
   }
 
+  async function sendRecipientClaim() {
+    if (!campaign || !recipientEmail) return;
+    setBusy(true);
+    try {
+      const response = await fetch("/api/claims", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", ...telegramAuthHeaders() },
+        body: JSON.stringify({
+          circleId: campaign.id,
+          recipientEmail,
+          messages: giftMessage.trim() ? [{ from: firstName, message: giftMessage.trim() }] : [],
+        }),
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || "Could not send the recipient claim");
+      setClaimSent(true);
+      await loadCircle(campaign.id);
+      showToast(result.payoutEnabled ? "Private claim sent to the recipient" : "Reveal sent. PayPal payout remains safely paused until Payouts is enabled.");
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : "Could not send the recipient claim");
+    } finally {
+      setBusy(false);
+    }
+  }
+
   const displayed = campaign ?? TEST_CIRCLE;
 
   return <main className="app-shell">
     <div className="ambient ambient-one"/><div className="ambient ambient-two"/>
     <header className="topbar">
-      <button className="brand"><span className="brand-mark"><span>W</span></span><span>WanderWrap</span></button>
+      <button className="brand"><span className="brand-mark"><Image src="/brand/wanderwrap-mark.png" alt="" width={34} height={34} priority/></span><span>WanderWrap</span></button>
       <div className="topbar-actions">
         <button className={paypalConnected ? "paypal-status connected" : "paypal-status"} onClick={connectPayPal}><span>P</span>{paypalConnected ? "PayPal linked" : "Link PayPal"}</button>
         <span className="avatar avatar-user">{firstName.slice(0, 1).toUpperCase()}</span>
@@ -272,7 +301,14 @@ export default function Home() {
         {campaign && <div className="circle-link-actions"><button onClick={shareCircle}>Share Circle link</button><button className={subscribed ? "subscribed" : ""} onClick={subscribeToUpdates}>{subscribed ? "DM updates on ✓" : "Get DM updates"}</button></div>}
         {campaign && !campaign.pendingApproval && !fullyFunded && <div className={paypalConnected ? "sandbox-helper linked" : "sandbox-helper"}><span>{paypalConnected ? "✅" : "🧪"}</span><div><b>{paypalConnected ? `PayPal linked${paypalIdentity?.name ? ` as ${paypalIdentity.name}` : ""}` : "Use a Personal Sandbox account"}</b><small>{paypalConnected ? "PayPal does not share a consumer balance with WanderWrap. Checkout will confirm an eligible balance or funding source before you approve payment." : "Your normal PayPal login will not work here. In the PayPal Developer Dashboard, open Testing Tools → Sandbox Accounts and use the generated Personal account email and password."}</small></div></div>}
         {!fullyFunded && <><label className="test-amount"><span>Contribution</span><div>£ <input value={amount} onChange={(event) => setAmount(event.target.value.replace(/[^0-9.]/g,""))} inputMode="decimal"/></div></label><button className="primary-button" disabled={!campaign || Boolean(campaign?.pendingApproval) || !validAmount || busy} onClick={contribute}>{paypalConnected ? `Continue to PayPal · £${Number(amount || 0).toFixed(2)}` : `Link PayPal to contribute £${Number(amount || 0).toFixed(2)}`} <span>↗</span></button></>}
-        {fullyFunded && <><div className="target-reached"><span>✓</span><div><b>Target reached with verified money</b><small>The purchase boundary is now visible.</small></div></div><button className="primary-button" onClick={() => showToast("Retailer purchasing is not connected yet. No order was placed.")}>3. Review purchase boundary <span>→</span></button></>}
+        {fullyFunded && <><div className="target-reached"><span>✓</span><div><b>Target reached with verified money</b><small>Ribbon can now send the private reveal. Penny keeps payout locked until PayPal enables the required scope.</small></div></div>
+          <div className="claim-invite">
+            <span>RIBBON · RECIPIENT HANDOFF</span>
+            <label className="simple-field"><span>Test recipient email</span><input type="email" value={recipientEmail} onChange={(event) => setRecipientEmail(event.target.value)} placeholder="recipient@example.com"/></label>
+            <label className="simple-field"><span>Your message</span><textarea value={giftMessage} onChange={(event) => setGiftMessage(event.target.value)} maxLength={600}/></label>
+            <button className="primary-button" disabled={busy || claimSent} onClick={sendRecipientClaim}>{claimSent ? "Private reveal sent ✓" : "Email the private reveal"} <span>✦</span></button>
+            <small>SES sandbox note: until AWS grants production access, the recipient address must be verified. Use hi@chatpye.com for this first test.</small>
+          </div></>}
       </section>
 
       <section className="timeline-card"><div className="section-title"><div><span>YOUR CIRCLE JOURNEY</span><h3>From invite to unforgettable</h3></div><span className="mini-gift">🎀</span></div><ol className="timeline"><li className={campaign ? "done" : "active"}><span>{campaign ? "✓" : "1"}</span><div><b>Start the Circle 🎁</b><small>Create the shared space and invite link</small></div></li><li className={campaign && !campaign.pendingApproval ? "done" : campaign ? "active" : ""}><span>{campaign && !campaign.pendingApproval ? "✓" : "2"}</span><div><b>Open contributions 💛</b><small>The organiser stays in control</small></div></li><li className={fullyFunded ? "done" : campaign && !campaign.pendingApproval ? "active" : ""}><span>{fullyFunded ? "✓" : "3"}</span><div><b>Contribute with PayPal 🅿️</b><small>Use a Personal Sandbox account for this test</small></div></li><li className={fullyFunded ? "active" : ""}><span>4</span><div><b>Approve the final gift ✨</b><small>No purchase happens without confirmation</small></div></li></ol></section>

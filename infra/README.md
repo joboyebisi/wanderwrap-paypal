@@ -2,7 +2,7 @@
 
 ## Fast development environment
 
-`circles-build.yaml` creates an ECR repository and a small CodeBuild project that builds this public GitHub repository without requiring Docker locally. `circles-lambda-dev.yaml` then runs the container with Lambda Web Adapter behind an HTTP API, using DynamoDB and Bedrock on a pay-per-use basis. The development stack resolves its PayPal and Telegram configuration from the `wanderwrap/circles/development` Secrets Manager secret and disables browser demo authentication.
+`circles-build.yaml` creates an ECR repository and a small CodeBuild project that builds this public GitHub repository without requiring Docker locally. `circles-lambda-dev.yaml` then runs the container with Lambda Web Adapter behind an HTTP API, using DynamoDB, Bedrock, and SES on a pay-per-use basis. The development stack resolves its PayPal and Telegram configuration from the `wanderwrap/circles/development` Secrets Manager secret and disables browser demo authentication.
 
 The original App Runner template remains available for an eligible existing App Runner account. The Lambda development path is the preferred way to get the current prototype online quickly.
 
@@ -41,6 +41,45 @@ curl -X POST "https://api.telegram.org/bot$TELEGRAM_BOT_TOKEN/setWebhook" \
 ```
 
 For production, deploy with `EnvironmentType=production` (which selects PayPal live mode and enables DynamoDB deletion protection), configure the custom domain in App Runner, and set the same final HTTPS URL in `NEXT_PUBLIC_APP_URL`.
+
+## 5. Configure the existing PayPal webhook
+
+Use one PayPal webhook for this app. Its URL remains:
+
+```text
+https://mvfjnli2kj.execute-api.eu-west-2.amazonaws.com/api/paypal/webhook
+```
+
+Edit that webhook in the PayPal Developer Dashboard and keep the existing `PAYPAL_WEBHOOK_ID`. Do not replace `TELEGRAM_WEBHOOK_SECRET`; Telegram and PayPal use unrelated verification mechanisms. Subscribe the PayPal webhook to:
+
+- `PAYMENT.CAPTURE.COMPLETED`
+- `PAYMENT.PAYOUTSBATCH.DENIED`
+- `PAYMENT.PAYOUTSBATCH.PROCESSING`
+- `PAYMENT.PAYOUTSBATCH.SUCCESS`
+- `PAYMENT.PAYOUTS-ITEM.BLOCKED`
+- `PAYMENT.PAYOUTS-ITEM.CANCELED`
+- `PAYMENT.PAYOUTS-ITEM.FAILED`
+- `PAYMENT.PAYOUTS-ITEM.HELD`
+- `PAYMENT.PAYOUTS-ITEM.REFUNDED`
+- `PAYMENT.PAYOUTS-ITEM.RETURNED`
+- `PAYMENT.PAYOUTS-ITEM.SUCCEEDED`
+- `PAYMENT.PAYOUTS-ITEM.UNCLAIMED`
+
+If the existing webhook is edited, neither `.env.local` nor Secrets Manager changes. If a second webhook is created, its ID is different and the current verifier must be extended before both can be accepted.
+
+## 6. Enable PayPal Payouts
+
+In **PayPal Developer Dashboard → Apps & Credentials → Sandbox → the existing WanderWrap Merchant app**, open **Features**, enable **Payouts**, and save. Do not create a second app. Previously issued access tokens may retain the old scope until they expire, so rerun:
+
+```powershell
+npm run paypal:verify
+```
+
+Keep `PAYPAL_PAYOUTS_ENABLED=false` until the script reports that the effective access token has Payouts. The flag is a deployment gate, not a substitute for PayPal approval.
+
+## 7. Amazon SES recipient email
+
+The development account uses the DKIM-verified `chatpye.com` identity in `eu-west-2`, with `WanderWrap <hi@chatpye.com>` as the sender. SES remains in Sandbox, so recipient addresses must also belong to a verified identity. Use `hi@chatpye.com` as the first test recipient, or request production access from the SES account dashboard before testing arbitrary addresses.
 
 ## Operational checks
 
