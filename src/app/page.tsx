@@ -5,6 +5,8 @@ import type { CircleCampaign } from "@/lib/agents/types";
 import {
   initializeTelegram,
   openExternalLink,
+  openTelegramDeepLink,
+  shareTelegramURL,
   telegramAuthHeaders,
   telegramImpact,
 } from "@/lib/telegram-client";
@@ -27,6 +29,8 @@ export default function Home() {
   const [busy, setBusy] = useState(false);
   const [toast, setToast] = useState("");
   const [showDetails, setShowDetails] = useState(false);
+  const [circleLinks, setCircleLinks] = useState<{ miniApp: string; dmOptIn: string } | null>(null);
+  const [subscribed, setSubscribed] = useState(false);
 
   const showToast = useCallback((message: string) => {
     setToast(message);
@@ -40,12 +44,14 @@ export default function Home() {
     if (response.ok) setFunding(await response.json());
   }, []);
 
-  const loadCircle = useCallback(async () => {
-    const response = await fetch("/api/agent/campaign", { headers: telegramAuthHeaders() });
+  const loadCircle = useCallback(async (circleId?: string) => {
+    const query = circleId ? `?circleId=${encodeURIComponent(circleId)}` : "";
+    const response = await fetch(`/api/agent/campaign${query}`, { headers: telegramAuthHeaders() });
     if (!response.ok) return;
     const result = await response.json();
     if (result.campaign) {
       setCampaign(result.campaign);
+      setCircleLinks(result.links);
       await refreshFunding(result.campaign.id);
     }
   }, [refreshFunding]);
@@ -56,7 +62,8 @@ export default function Home() {
       if (telegramName) setFirstName(telegramName);
       const paypalStatus = new URLSearchParams(window.location.search).get("paypal");
       if (startParam === "paypal_connected" || paypalStatus === "connected") setPaypalConnected(true);
-      await loadCircle();
+      const linkedCircleId = startParam?.startsWith("circle_") ? startParam.slice("circle_".length) : undefined;
+      await loadCircle(linkedCircleId);
       if (startParam?.startsWith("paid_") || paypalStatus === "success") {
         setPaypalConnected(true);
         showToast("PayPal returned successfully. Confirming the capture…");
@@ -87,6 +94,7 @@ export default function Home() {
       const result = await response.json();
       if (!response.ok) throw new Error(result.error || "Could not activate the Circle");
       setCampaign(result.campaign);
+      await loadCircle(result.campaign.id);
       showToast("Your live sandbox Circle is ready");
     } catch (error) {
       showToast(error instanceof Error ? error.message : "Could not activate the Circle");
@@ -151,6 +159,39 @@ export default function Home() {
     }
   }
 
+  async function subscribeToUpdates() {
+    if (!campaign) return;
+    setBusy(true);
+    try {
+      const response = await fetch("/api/circles/subscribe", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", ...telegramAuthHeaders() },
+        body: JSON.stringify({ circleId: campaign.id }),
+      });
+      const result = await response.json();
+      if (response.ok) {
+        setSubscribed(true);
+        showToast("Private Circle updates are on");
+      } else if (result.requiresBotStart && result.dmUrl) {
+        openTelegramDeepLink(result.dmUrl);
+      } else throw new Error(result.error || "Could not enable updates");
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : "Could not enable updates");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function shareCircle() {
+    if (!campaign || !circleLinks?.miniApp) return;
+    const text = `Join ${campaign.recipient}’s ${campaign.occasion.toLowerCase()} Circle and contribute privately 🎁`;
+    if (shareTelegramURL(circleLinks.miniApp, text)) return;
+    if (navigator.share) await navigator.share({ title: `${campaign.recipient}’s WanderWrap Circle`, text, url: circleLinks.miniApp });
+    else { await navigator.clipboard.writeText(circleLinks.miniApp); showToast("Circle link copied"); }
+  }
+
+  const displayed = campaign ?? TEST_CIRCLE;
+
   return <main className="app-shell">
     <div className="ambient ambient-one"/><div className="ambient ambient-two"/>
     <header className="topbar">
@@ -166,7 +207,7 @@ export default function Home() {
 
       <div className="eyebrow-row"><span className="eyebrow"><i/> ONE-PERSON SANDBOX TEST</span><span className="test-badge">PAYPAL SANDBOX</span></div>
       <div className="hero-copy">
-        <p className="occasion">{TEST_CIRCLE.recipient.toUpperCase()}’S {TEST_CIRCLE.occasion.toUpperCase()} · {TEST_CIRCLE.eventDate}</p>
+        <p className="occasion">{displayed.recipient.toUpperCase()}’S {displayed.occasion.toUpperCase()} · {displayed.eventDate}</p>
         <h1>You’re the first<br/><em>gifter.</em></h1>
         <p>This guided Circle starts at £0. Only your completed sandbox contribution will move it.</p>
       </div>
@@ -191,6 +232,7 @@ export default function Home() {
         <div className="progress-track"><span style={{width:`${progress}%`}}/></div>
         <div className="funding-meta"><span><b>{funding.contributorCount}</b> verified contributor{funding.contributorCount === 1 ? "" : "s"}</span><span>£{Math.max(0, target - funding.total).toFixed(2)} to go</span></div>
         <div className="single-tester"><span className="avatar avatar-user">{firstName.slice(0, 1).toUpperCase()}</span><div><b>{funding.contributorCount ? `${firstName}, contribution verified` : `${firstName}, ready to test`}</b><small>No fictional contributors are included.</small></div></div>
+        {campaign && <div className="circle-link-actions"><button onClick={shareCircle}>Share Circle link</button><button className={subscribed ? "subscribed" : ""} onClick={subscribeToUpdates}>{subscribed ? "DM updates on ✓" : "Get DM updates"}</button></div>}
         {!paypalConnected && <button className="primary-button" disabled={!campaign || Boolean(campaign?.pendingApproval) || busy} onClick={connectPayPal}>1. Link your PayPal sandbox account <span>↗</span></button>}
         {paypalConnected && !fullyFunded && <><label className="test-amount"><span>Contribution</span><div>£ <input value={amount} onChange={(event) => setAmount(event.target.value.replace(/[^0-9.]/g,""))} inputMode="decimal"/></div></label><button className="primary-button" disabled={!campaign || Boolean(campaign?.pendingApproval) || !validAmount || busy} onClick={contribute}>2. Contribute with PayPal <span>↗</span></button></>}
         {fullyFunded && <><div className="target-reached"><span>✓</span><div><b>Target reached with verified money</b><small>The purchase boundary is now visible.</small></div></div><button className="primary-button" onClick={() => showToast("Retailer purchasing is not connected yet. No order was placed.")}>3. Review purchase boundary <span>→</span></button></>}

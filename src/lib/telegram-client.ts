@@ -8,6 +8,7 @@ import {
   mainButton,
   miniApp,
   openLink,
+  openTelegramLink,
   safeInit,
   shareURL,
   swipeBehavior,
@@ -81,4 +82,9 @@ export function shareTelegramURL(url: string, text: string) {
   if (!initialized || !shareURL.isSupported()) return false;
   shareURL(url, text);
   return true;
+}
+
+export function openTelegramDeepLink(url: string) {
+  if (initialized && openTelegramLink.isSupported()) openTelegramLink(url);
+  else window.location.assign(url);
 }

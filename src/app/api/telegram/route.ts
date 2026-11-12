@@ -2,6 +2,10 @@ import { after, NextResponse } from "next/server";
 import { runCircleHarness } from "@/lib/agents/harness";
 import { listChatEvents, registerImportantEvent } from "@/lib/agents/events";
 import { claimTelegramUpdate } from "@/lib/telegram-updates";
+import { campaignStore } from "@/lib/agents/store";
+import { upsertCircleMember } from "@/lib/circle-members";
+import { getCircleFunding } from "@/lib/paypal-ledger";
+import { circleDmOptInLink, circleMiniAppLink, escapeTelegramHtml } from "@/lib/telegram-bot";
 
 declare global {
   // eslint-disable-next-line no-var
@@ -22,11 +26,51 @@ async function sendMessage(token: string, chatId: number, text: string, replyMar
 }
 
 async function handleTelegramUpdate(token: string, update: Record<string, any>) {
+  const callback = update.callback_query;
+  const unsubscribe = callback?.data?.match(/^unsubscribe:([A-Za-z0-9-]{1,48})$/);
+  if (unsubscribe && callback.from?.id) {
+    await upsertCircleMember({
+      circleId: unsubscribe[1],
+      userId: String(callback.from.id),
+      firstName: callback.from.first_name,
+      username: callback.from.username,
+      notifications: false,
+    });
+    await fetch(api(token, "answerCallbackQuery"), {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ callback_query_id: callback.id, text: "Private Circle updates are off" }),
+    });
+    if (callback.message?.chat?.id) await sendMessage(token, callback.message.chat.id, "Private updates are off. You can opt in again from the Circle at any time.");
+    return;
+  }
   const message = update.message;
   if (!message?.chat?.id) return;
   const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
   const text = message.text || "";
   const chatKey = String(message.chat.id);
+
+  const circleStart = text.match(/^\/start(?:@\w+)?\s+circle_([A-Za-z0-9-]{1,48})$/i);
+  if (circleStart) {
+    const campaign = await campaignStore.get(circleStart[1]);
+    if (!campaign) {
+      await sendMessage(token, message.chat.id, "That Circle link is no longer available. Ask the organiser for a fresh link.");
+      return;
+    }
+    const userId = String(message.from?.id || message.chat.id);
+    await upsertCircleMember({
+      circleId: campaign.id,
+      userId,
+      firstName: message.from?.first_name,
+      username: message.from?.username,
+      notifications: true,
+    });
+    const funding = await getCircleFunding(campaign.id);
+    await sendMessage(token, message.chat.id,
+      `🎁 <b>You’re in ${escapeTelegramHtml(campaign.recipient)}’s ${escapeTelegramHtml(campaign.occasion)} Circle.</b>\n\nThe group has raised <b>£${funding.total.toFixed(2)} of £${campaign.targetAmount.toFixed(2)}</b>. I’ll send private milestone updates without revealing anyone else’s amount.`,
+      { inline_keyboard: [[{ text: "Open Circle & contribute", url: circleMiniAppLink(campaign.id) }], [{ text: "Stop updates", callback_data: `unsubscribe:${campaign.id}` }]] });
+    return;
+  }
 
   if (text.startsWith("/remember")) {
     const match = text.match(/^\/remember(?:@\w+)?\s+([^,]+),\s*([^,]+),\s*(\d{4}-\d{2}-\d{2})/i);
@@ -69,13 +113,13 @@ async function handleTelegramUpdate(token: string, update: Record<string, any>) 
       chatId: chatKey, actorId: String(message.from?.id || "unknown"), prompt: text.replace(/^\/(circle|gift)(@\w+)?/, "").trim() || "Create a birthday Circle",
       consentToAnalyse: memory.consented.has(chatKey), messageHistory: memory.messages.get(chatKey) ?? [],
     });
-    await sendMessage(token, message.chat.id, `🎁 <b>${result.campaign.recipient}’s ${result.campaign.occasion} Circle</b>\n\n${result.reply}`, {
-      inline_keyboard: [[{ text: "Review the agent plan ✨", web_app: { url: `${appUrl}?campaign=${result.campaign.id}` } }], [{ text: "Privacy & consent", callback_data: "privacy" }]],
+    await sendMessage(token, message.chat.id, `🎁 <b>${result.campaign.recipient}’s ${result.campaign.occasion} Circle</b>\n\n${result.reply}\n\nShare this message so each person can open the exact Circle and opt into private updates.`, {
+      inline_keyboard: [[{ text: "Open Circle ✨", url: circleMiniAppLink(result.campaign.id) }], [{ text: "Get private updates", url: circleDmOptInLink(result.campaign.id) }], [{ text: "Privacy & consent", callback_data: "privacy" }]],
     });
   } else if (text.startsWith("/start")) {
     await sendMessage(token, message.chat.id,
       "🎁 <b>Let’s make their day.</b>\n\nI’ll help your group choose a thoughtful gift, split the cost and keep everything moving — with secure PayPal contributions.",
-      { inline_keyboard: [[{ text: "Create a gift Circle ✨", web_app: { url: appUrl } }]] });
+      { inline_keyboard: [[{ text: "Create a gift Circle ✨", url: appUrl }]] });
   } else if (memory.consented.has(chatKey)) {
     const buffer = memory.messages.get(chatKey) ?? [];
     buffer.push(`${message.from?.first_name || "Member"}: ${text}`);

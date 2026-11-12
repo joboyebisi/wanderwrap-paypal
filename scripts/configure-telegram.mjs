@@ -65,7 +65,7 @@ await telegram("setMyCommands", {
 await telegram("setWebhook", {
   url: `${appUrl}/api/telegram`,
   secret_token: webhookSecret,
-  allowed_updates: ["message"],
+  allowed_updates: ["message", "callback_query"],
   max_connections: 20,
 });
 
