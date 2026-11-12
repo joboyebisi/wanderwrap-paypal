@@ -72,7 +72,9 @@ export default function Home() {
       if (telegramName) setFirstName(telegramName);
       const paypalStatus = new URLSearchParams(window.location.search).get("paypal");
       const returnedFromPayPal = startParam === "paypal_connected" || paypalStatus === "connected";
+      const paypalFailed = startParam === "paypal_error" || paypalStatus === "error";
       const linked = await refreshPayPalStatus();
+      if (paypalFailed && !linked) showToast("PayPal login did not finish. Check the Sandbox app Return URL and Identity permissions, then try again.");
       let pendingCircleId: string | undefined;
       if (returnedFromPayPal && linked) {
         const pending = window.localStorage.getItem("wanderwrap:pending-contribution");

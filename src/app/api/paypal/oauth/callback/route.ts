@@ -20,7 +20,11 @@ export async function GET(request: Request) {
     const destination = bot ? `https://t.me/${bot.replace(/^@/, "")}?startapp=paypal_connected` : `${process.env.NEXT_PUBLIC_APP_URL || "/"}?paypal=connected`;
     return NextResponse.redirect(destination);
   } catch (error) {
-    const message = encodeURIComponent(error instanceof Error ? error.message : "PayPal login failed");
+    const reason = error instanceof Error ? error.message : "PayPal login failed";
+    console.error("PayPal OAuth callback failed", reason);
+    const bot = process.env.TELEGRAM_BOT_USERNAME;
+    if (bot) return NextResponse.redirect(`https://t.me/${bot.replace(/^@/, "")}?startapp=paypal_error`);
+    const message = encodeURIComponent(reason);
     return NextResponse.redirect(`${process.env.NEXT_PUBLIC_APP_URL || "/"}?paypal=error&message=${message}`);
   }
 }
