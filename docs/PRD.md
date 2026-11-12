@@ -266,9 +266,12 @@ Acceptance criteria:
 
 - The organiser must explicitly confirm permission before recipient clues are saved or sent to Channel3.
 - WanderWrap never logs into, crawls, or fetches a recipient's social profile; the optional URL is provenance only.
-- Scout sends Channel3 a Circle-scoped query containing occasion, approved clues and the hard maximum price.
+- Sage converts the approved text into an evidence-bound profile containing gift interests, style cues, values, constraints, exclusions and explicit confidence; it must not assign psychological or protected-trait labels.
+- Scout creates three diverse Channel3 briefs: strongest profile fit, emotionally memorable and beautifully useful.
+- Scout sends Channel3 Circle-scoped queries containing occasion, bounded profile context and the hard maximum price.
 - Search uses the server-side `CHANNEL3_API_KEY`, passes a stable internal `x-user-id`, requests in-stock offers and never exposes the key to the browser.
-- Product cards show a real image when available, title, retailer, price, availability, attribution-safe buy URL and an explanation of the match.
+- Deterministic code rejects over-budget or unavailable products, deduplicates candidates, scores relevance, price proximity and catalog completeness, and diversifies the final shortlist.
+- Product cards show a real image when available, title, retailer, price, availability, attribution-safe buy URL, search intent, match score and evidence-grounded explanation.
 - Missing credentials, provider errors and empty results are visible recovery states; no dummy product is presented as live.
 - The organiser selects the direction. Selection does not place an order and is recorded in the agent trace.
 - The selected product appears beside contribution progress and is copied into the immutable recipient claim snapshot.

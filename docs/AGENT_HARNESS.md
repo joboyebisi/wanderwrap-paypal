@@ -56,6 +56,8 @@ Scout uses Channel3's `/v1/search` endpoint in agentic mode after the organiser 
 
 Channel3 enriches the recommendation; it does not have purchase authority. Porter must recheck the selected offer and obtain organiser approval before any future checkout handoff. The recipient's cash-or-gift choice is likewise a preference, not proof of payout or purchase.
 
+The full replacement for social personality scoring is documented in [GIFT_RECOMMENDER.md](GIFT_RECOMMENDER.md). Sage produces an evidence-bound profile rather than a psychological label. Scout plans three complementary searches. A deterministic ranker then applies hard eligibility, relevance-dominant scoring, price proximity, catalog-quality weighting, deduplication and diversity before the organiser sees the shortlist.
+
 ## Approval boundaries
 
 The harness pauses before:

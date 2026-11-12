@@ -343,10 +343,16 @@ export default function Home() {
         <label className="research-consent"><input type="checkbox" checked={researchConsent} onChange={(event) => setResearchConsent(event.target.checked)}/><span><b>I have permission to use these clues</b><small>Only this gift-relevant summary is saved with the Circle.</small></span></label>
         <button className="research-button" disabled={busy || !researchConsent || !researchClues.trim()} onClick={researchGifts}><span>✨</span> Find live gifts under £{campaign.targetAmount}</button>
         {researchError && <div className="research-status"><span>🔌</span><div><b>Scout needs one connection</b><small>{researchError}</small></div></div>}
+        {campaign.giftProfile && <div className="gift-profile">
+          <div><span>🧠 SAGE · EVIDENCE-BOUND PROFILE</span><strong>{Math.round(campaign.giftProfile.confidence * 100)}% confidence</strong></div>
+          <p>{campaign.giftProfile.summary}</p>
+          <div className="profile-chips">{[...campaign.giftProfile.interests, ...campaign.giftProfile.styles, ...campaign.giftProfile.values].slice(0, 8).map((signal) => <span key={signal}>{signal}</span>)}</div>
+          {campaign.searchBriefs && <small>Scout searched {campaign.searchBriefs.map((brief) => brief.label).join(" · ")}</small>}
+        </div>}
         {campaign.productRecommendations && campaign.productRecommendations.length > 0 && <div className="product-carousel">
           {campaign.productRecommendations.map((product) => <article key={product.id} className={product.id === campaign.selectedProductId ? "product-card selected" : "product-card"}>
-            <div className="product-image">{product.imageUrl ? <Image src={product.imageUrl} alt={product.imageAlt || product.title} width={240} height={180} unoptimized/> : <span>🎁</span>}<i>LIVE</i></div>
-            <div className="product-copy"><span>{product.availability} · {product.retailer}</span><h3>{product.title}</h3><p>{product.rationale}</p><div><strong>{product.currency === "GBP" ? "£" : `${product.currency} `}{product.price.toFixed(2)}</strong><button disabled={busy} onClick={() => void selectProduct(product.id)}>{product.id === campaign.selectedProductId ? "Chosen ✓" : "Choose"}</button></div></div>
+            <div className="product-image">{product.imageUrl ? <Image src={product.imageUrl} alt={product.imageAlt || product.title} width={240} height={180} unoptimized/> : <span>🎁</span>}<i>LIVE · {product.matchScore ? `${product.matchScore}% MATCH` : "AI PICK"}</i></div>
+            <div className="product-copy"><span>{product.searchIntent || "Live gift"} · {product.availability} · {product.retailer}</span><h3>{product.title}</h3><p>{product.rationale}</p><div><strong>{product.currency === "GBP" ? "£" : `${product.currency} `}{product.price.toFixed(2)}</strong><button disabled={busy} onClick={() => void selectProduct(product.id)}>{product.id === campaign.selectedProductId ? "Chosen ✓" : "Choose"}</button></div></div>
           </article>)}
         </div>}
       </section>}

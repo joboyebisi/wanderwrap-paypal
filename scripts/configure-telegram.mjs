@@ -58,6 +58,7 @@ await telegram("setMyCommands", {
     { command: "remember", description: "Remember a birthday or event" },
     { command: "events", description: "Show remembered events" },
     { command: "analyse_gifts", description: "Enable consented gift analysis" },
+    { command: "research_gift", description: "Research live personalised gifts" },
     { command: "stop_analysis", description: "Stop gift analysis" },
     { command: "privacy", description: "Explain privacy and approvals" },
   ],

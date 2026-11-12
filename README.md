@@ -16,7 +16,7 @@ An agentic Telegram Mini App that helps friends remember meaningful moments, und
 ![Telegram](https://img.shields.io/badge/Telegram-Mini_App-26A5E4?logo=telegram)
 ![License](https://img.shields.io/badge/license-MIT-3e9b78)
 
-[Product tour](#the-experience) · [Product requirements](docs/PRD.md) · [Architecture](#architecture) · [Local setup](#local-development) · [AWS deployment](infra/README.md) · [Agent harness](docs/AGENT_HARNESS.md) · [Reference decisions](docs/REFERENCE_ARCHITECTURE.md)
+[Product tour](#the-experience) · [Product requirements](docs/PRD.md) · [Gift recommender](docs/GIFT_RECOMMENDER.md) · [Architecture](#architecture) · [Local setup](#local-development) · [AWS deployment](infra/README.md) · [Agent harness](docs/AGENT_HARNESS.md) · [Reference decisions](docs/REFERENCE_ARCHITECTURE.md)
 
 </div>
 
@@ -34,7 +34,7 @@ The AI proposes; people decide. No chat analysis, fundraising, purchase, payout 
 
 1. **Remember the moment** — Spark remembers explicitly supplied birthdays and milestones, then suggests a Circle at the right time.
 2. **Understand the recipient** — with group consent, Sage extracts only non-sensitive, gift-relevant preference signals from messages the bot receives.
-3. **Choose thoughtfully** — the organiser shares consented public clues; Scout turns them into a budget-aware Channel3 search with live product images, prices, availability and retailer offers.
+3. **Choose thoughtfully** — the organiser shares consented public clues; Sage creates an uncertainty-aware gift profile, Scout plans three distinct searches, and Channel3 supplies live product images, prices, availability and retailer offers for deterministic ranking.
 4. **Fund privately** — Rally coordinates participation and Penny reconciles completed PayPal captures without exposing individual amounts.
 5. **Approve and fulfil** — Porter checks the final gift, price, timing and delivery plan, then pauses for organiser approval.
 6. **Unwrap emotionally** — Ribbon turns real contributor messages into a delightful reveal where the recipient can choose the PayPal money gift or the personalised product Scout found.
@@ -49,6 +49,7 @@ The current sandbox build completes the journey through a verified contribution 
 | `/remember Sarah, birthday, 2026-12-18` | Save an important date with gentle reminders |
 | `/events` | Show remembered moments for the group |
 | `/analyse_gifts` | Explicitly enable bounded, gift-only message analysis |
+| `/research_gift` | Open the active Circle's consent-first live gift research |
 | `/stop_analysis` | Stop analysis and clear the prototype message buffer |
 | `/privacy` | Explain the group's privacy and approval contract |
 

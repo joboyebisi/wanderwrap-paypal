@@ -22,7 +22,8 @@ An organiser adds `@WanderWrapCirclesBot` to a Telegram group and asks it to cre
 
 - **Spark** recognises explicitly supplied birthdays and milestones.
 - **Sage** reads only consented, gift-relevant context and extracts safe preference signals.
-- **Scout** turns organiser-approved public clues into live, budget-aware Channel3 product cards with images, availability and retailer offers.
+- **Sage** replaces opaque social-personality scoring with an evidence-bound profile: gift interests, style cues, values, constraints and uncertainty—never a psychological diagnosis.
+- **Scout** plans three complementary searches and turns live Channel3 results into budget-aware product cards with images, availability, match scores and retailer offers.
 - **Rally** coordinates the target, participation, reminders, and private DM updates.
 - **Penny** opens PayPal checkout and counts only server-verified captures.
 - **Porter** prepares the purchase or fulfilment handoff behind organiser approval.
@@ -41,7 +42,7 @@ The custom agent harness calls Amazon Bedrock through the model-agnostic Convers
 
 PayPal Orders v2 creates contribution checkouts. Log in with PayPal links a Sandbox identity. PayPal webhook signatures are verified server-side before a capture enters the Circle ledger. Amazon SES sends recipient claim invitations from the DKIM-verified `chatpye.com` domain.
 
-Channel3 powers Scout's live shopping layer. The organiser explicitly confirms permission to use a public excerpt or gift-relevant description; WanderWrap does not crawl the linked profile. The server combines those clues with the occasion and hard budget, calls Channel3 agentic search with an in-stock filter and stable Circle attribution ID, then renders product images, retailer prices and availability as interactive Mini App cards. The selected product follows the contribution link and becomes part of the recipient claim snapshot.
+Channel3 powers Scout's live shopping layer. The organiser explicitly confirms permission to use a public excerpt or gift-relevant description; WanderWrap does not crawl the linked profile. Sage first builds a confidence-labelled gift profile, then Scout plans three complementary search briefs. Channel3 agentic search returns live GB/GBP candidates with an in-stock filter and stable Circle attribution ID. Deterministic code applies hard budget eligibility, relevance-dominant scoring, price proximity, catalog-quality weighting, deduplication and diversity before rendering interactive cards. The selected product follows the contribution link and becomes part of the recipient claim snapshot.
 
 ## Challenges
 

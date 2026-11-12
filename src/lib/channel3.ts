@@ -1,6 +1,8 @@
+import { Channel3 } from "@channel3/sdk";
 import type { ProductRecommendation } from "@/lib/agents/types";
 
 const CHANNEL3_API = process.env.CHANNEL3_API_BASE_URL || "https://api.trychannel3.com/v1";
+let client: Channel3 | undefined;
 
 export class Channel3ConfigurationError extends Error {
   constructor() {
@@ -37,8 +39,7 @@ function priceAmount(value: unknown) {
   return Number.isFinite(parsed) ? parsed : 0;
 }
 
-function parseProducts(payload: unknown, maxPrice: number, currency: string, rationale: string) {
-  const products = Array.isArray(record(payload).products) ? record(payload).products as unknown[] : [];
+function parseProducts(products: unknown[], maxPrice: number, currency: string, rationale: string, searchIntent: string) {
   return products.flatMap((entry): ProductRecommendation[] => {
     const product = record(entry);
     const images = Array.isArray(product.images) ? product.images.map(record) : [];
@@ -73,6 +74,9 @@ function parseProducts(payload: unknown, maxPrice: number, currency: string, rat
       buyUrl: best.url!,
       keyFeatures: features,
       rationale,
+      matchScore: 0,
+      matchReasons: [],
+      searchIntent,
     }];
   });
 }
@@ -83,31 +87,27 @@ export async function searchChannel3Products(input: {
   currency?: string;
   userId: string;
   rationale: string;
+  searchIntent?: string;
   limit?: number;
 }) {
   const apiKey = process.env.CHANNEL3_API_KEY?.trim();
   if (!apiKey) throw new Channel3ConfigurationError();
   const currency = input.currency || "GBP";
-  const response = await fetch(`${CHANNEL3_API.replace(/\/$/, "")}/search`, {
-    method: "POST",
-    headers: {
-      "content-type": "application/json",
-      "x-api-key": apiKey,
+  client ??= new Channel3({
+    apiKey,
+    baseUrl: CHANNEL3_API.replace(/\/v1\/?$/, ""),
+    country: "GB",
+    currency: "GBP",
+    language: "en",
+    timeoutInSeconds: 20,
+    maxRetries: 2,
+  });
+  const page = await client.products.search({
       "x-user-id": input.userId,
-    },
-    body: JSON.stringify({
       query: input.query,
-      config: { mode: "agentic" },
+      config: { mode: "agentic", country: "GB", currency: "GBP", language: "en", offer_refresh_timeout_ms: 3_000 },
       filters: { price: { max_price: input.maxPrice }, availability: ["InStock"] },
       limit: Math.min(12, Math.max(3, input.limit || 6)),
-    }),
-    cache: "no-store",
-    signal: AbortSignal.timeout(15_000),
-  });
-  const result = await response.json().catch(() => ({}));
-  if (!response.ok) {
-    const message = text(record(result).message) || text(record(result).error) || `Channel3 search failed (${response.status})`;
-    throw new Error(message);
-  }
-  return parseProducts(result, input.maxPrice, currency, input.rationale).slice(0, input.limit || 6);
+    }, { timeoutInSeconds: 20, maxRetries: 2 });
+  return parseProducts(page.data as unknown[], input.maxPrice, currency, input.rationale, input.searchIntent || "Agentic search").slice(0, input.limit || 6);
 }

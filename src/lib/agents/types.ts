@@ -46,6 +46,33 @@ export interface RecipientResearch {
   updatedAt: string;
 }
 
+export type GiftSignalKind = "interest" | "style" | "value" | "constraint" | "avoid";
+
+export interface GiftSignal {
+  label: string;
+  kind: GiftSignalKind;
+  confidence: number;
+  evidence: string;
+}
+
+export interface GiftProfile {
+  summary: string;
+  interests: string[];
+  styles: string[];
+  values: string[];
+  constraints: string[];
+  avoid: string[];
+  signals: GiftSignal[];
+  confidence: number;
+  generatedAt: string;
+}
+
+export interface GiftSearchBrief {
+  id: string;
+  label: string;
+  query: string;
+}
+
 export interface ProductRecommendation {
   id: string;
   title: string;
@@ -59,6 +86,9 @@ export interface ProductRecommendation {
   buyUrl: string;
   keyFeatures: string[];
   rationale: string;
+  matchScore: number;
+  matchReasons: string[];
+  searchIntent: string;
 }
 
 export interface CircleCampaign {
@@ -78,6 +108,8 @@ export interface CircleCampaign {
   chatAnalysisConsent: boolean;
   personality: string[];
   recipientResearch?: RecipientResearch;
+  giftProfile?: GiftProfile;
+  searchBriefs?: GiftSearchBrief[];
   productRecommendations?: ProductRecommendation[];
   selectedProductId?: string;
   selectedGiftId?: string;
