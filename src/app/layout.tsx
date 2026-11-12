@@ -1,0 +1,26 @@
+import type { Metadata, Viewport } from "next";
+import Script from "next/script";
+import "./globals.css";
+
+export const metadata: Metadata = {
+  title: "WanderWrap Circles",
+  description: "Great gifts. Together. AI-powered group gifting with PayPal.",
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
+  themeColor: "#fffaf4",
+};
+
+export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
+  return (
+    <html lang="en">
+      <body>
+        {children}
+        <Script src="https://telegram.org/js/telegram-web-app.js" strategy="beforeInteractive" />
+      </body>
+    </html>
+  );
+}

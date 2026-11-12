@@ -1,0 +1,19 @@
+import { NextResponse } from "next/server";
+import { createPayPalOrder } from "@/lib/paypal";
+import { registerPayPalOrder } from "@/lib/paypal-ledger";
+
+export async function POST(request: Request) {
+  try {
+    const { amount, circleId = "sarah-birthday" } = await request.json();
+    const numericAmount = Number(amount);
+    if (!Number.isFinite(numericAmount) || numericAmount < 1 || numericAmount > 500) {
+      return NextResponse.json({ error: "Contribution must be between £1 and £500" }, { status: 400 });
+    }
+    const requestId = request.headers.get("idempotency-key") || undefined;
+    const order = await createPayPalOrder(numericAmount.toFixed(2), circleId, requestId);
+    await registerPayPalOrder(order.id, circleId, numericAmount, request.headers.get("x-wanderwrap-member") || undefined);
+    return NextResponse.json(order);
+  } catch (error) {
+    return NextResponse.json({ error: error instanceof Error ? error.message : "Could not create order" }, { status: 500 });
+  }
+}

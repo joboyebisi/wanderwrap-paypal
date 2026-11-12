@@ -1,0 +1,139 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: WanderWrap Circles - App Runner service and private ECR access
+
+Parameters:
+  ImageIdentifier:
+    Type: String
+    Description: Full ECR image URI including tag
+  AppUrl:
+    Type: String
+    Description: Public HTTPS URL, for example https://circles.wanderwrap.co.uk
+  PayPalClientIdSecretArn:
+    Type: String
+  PayPalClientSecretSecretArn:
+    Type: String
+  TelegramBotTokenSecretArn:
+    Type: String
+  TelegramWebhookSecretArn:
+    Type: String
+  PayPalWebhookIdSecretArn:
+    Type: String
+  OpenAIApiKeySecretArn:
+    Type: String
+
+Resources:
+  EcrAccessRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal: { Service: build.apprunner.amazonaws.com }
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSAppRunnerServicePolicyForECRAccess
+
+  AppInstanceRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal: { Service: tasks.apprunner.amazonaws.com }
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: WanderWrapDynamoAccess
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - dynamodb:GetItem
+                  - dynamodb:PutItem
+                  - dynamodb:Query
+                  - dynamodb:UpdateItem
+                Resource:
+                  - !GetAtt CirclesTable.Arn
+                  - !Sub '${CirclesTable.Arn}/index/*'
+              - Effect: Allow
+                Action: secretsmanager:GetSecretValue
+                Resource:
+                  - !Ref PayPalClientIdSecretArn
+                  - !Ref PayPalClientSecretSecretArn
+                  - !Ref TelegramBotTokenSecretArn
+                  - !Ref TelegramWebhookSecretArn
+                  - !Ref PayPalWebhookIdSecretArn
+                  - !Ref OpenAIApiKeySecretArn
+
+  CirclesTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: wanderwrap-circles
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - { AttributeName: pk, AttributeType: S }
+        - { AttributeName: sk, AttributeType: S }
+        - { AttributeName: gsi1pk, AttributeType: S }
+        - { AttributeName: gsi1sk, AttributeType: S }
+      KeySchema:
+        - { AttributeName: pk, KeyType: HASH }
+        - { AttributeName: sk, KeyType: RANGE }
+      GlobalSecondaryIndexes:
+        - IndexName: gsi1
+          KeySchema:
+            - { AttributeName: gsi1pk, KeyType: HASH }
+            - { AttributeName: gsi1sk, KeyType: RANGE }
+          Projection: { ProjectionType: ALL }
+
+  CirclesService:
+    Type: AWS::AppRunner::Service
+    Properties:
+      ServiceName: wanderwrap-circles
+      InstanceConfiguration:
+        Cpu: 1 vCPU
+        Memory: 2 GB
+        InstanceRoleArn: !GetAtt AppInstanceRole.Arn
+      HealthCheckConfiguration:
+        Protocol: HTTP
+        Path: /api/telegram
+        Interval: 10
+        Timeout: 5
+        HealthyThreshold: 1
+        UnhealthyThreshold: 5
+      SourceConfiguration:
+        AutoDeploymentsEnabled: true
+        AuthenticationConfiguration:
+          AccessRoleArn: !GetAtt EcrAccessRole.Arn
+        ImageRepository:
+          ImageIdentifier: !Ref ImageIdentifier
+          ImageRepositoryType: ECR
+          ImageConfiguration:
+            Port: '3000'
+            RuntimeEnvironmentVariables:
+              - Name: NEXT_PUBLIC_APP_URL
+                Value: !Ref AppUrl
+              - Name: PAYPAL_ENV
+                Value: sandbox
+              - Name: DYNAMODB_TABLE
+                Value: !Ref CirclesTable
+            RuntimeEnvironmentSecrets:
+              - Name: PAYPAL_CLIENT_ID
+                Value: !Ref PayPalClientIdSecretArn
+              - Name: PAYPAL_CLIENT_SECRET
+                Value: !Ref PayPalClientSecretSecretArn
+              - Name: TELEGRAM_BOT_TOKEN
+                Value: !Ref TelegramBotTokenSecretArn
+              - Name: TELEGRAM_WEBHOOK_SECRET
+                Value: !Ref TelegramWebhookSecretArn
+              - Name: PAYPAL_WEBHOOK_ID
+                Value: !Ref PayPalWebhookIdSecretArn
+              - Name: OPENAI_API_KEY
+                Value: !Ref OpenAIApiKeySecretArn
+
+Outputs:
+  ServiceUrl:
+    Value: !GetAtt CirclesService.ServiceUrl
+  ServiceArn:
+    Value: !GetAtt CirclesService.ServiceArn
