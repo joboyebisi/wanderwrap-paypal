@@ -16,7 +16,7 @@ export async function savePayPalIdentity(identity: LinkedPayPalIdentity) {
 export async function getPayPalIdentity(telegramUserId: string) {
   const dynamo = getDynamo();
   if (dynamo) {
-    const result = await dynamo.client.send(new GetCommand({ TableName: dynamo.table, Key: { pk: `USER#${telegramUserId}`, sk: "PAYPAL" } }));
+    const result = await dynamo.client.send(new GetCommand({ TableName: dynamo.table, Key: { pk: `USER#${telegramUserId}`, sk: "PAYPAL" }, ConsistentRead: true }));
     if (result.Item?.data) return result.Item.data as LinkedPayPalIdentity;
   }
   return identities.get(telegramUserId) ?? null;

@@ -73,10 +73,17 @@ export async function exchangePayPalLoginCode(code: string) {
   });
   const token = await tokenResponse.json();
   if (!tokenResponse.ok) throw new Error(token.error_description || "PayPal login could not be completed");
-  const profileResponse = await fetch(`${paypalBase}/v1/identity/oauth2/userinfo?schema=paypalv1.1`, { headers: { Authorization: `Bearer ${token.access_token}` }, cache: "no-store" });
+  const profileResponse = await fetch(`${paypalBase}/v1/identity/openidconnect/userinfo`, { headers: { Authorization: `Bearer ${token.access_token}`, Accept: "application/json" }, cache: "no-store" });
   const profile = await profileResponse.json();
-  if (!profileResponse.ok) throw new Error("PayPal profile could not be read");
-  return profile as { user_id: string; name?: string; email?: string; verified_account?: boolean };
+  if (!profileResponse.ok) throw new Error(`PayPal profile could not be read (${profileResponse.status}${profile?.error ? `: ${profile.error}` : ""})`);
+  const userId = profile.user_id || profile.payer_id || profile.sub;
+  if (!userId) throw new Error("PayPal profile did not include an account identifier");
+  return {
+    user_id: String(userId),
+    name: profile.name,
+    email: profile.email,
+    verified_account: Boolean(profile.verified_account ?? profile.email_verified),
+  } as { user_id: string; name?: string; email?: string; verified_account?: boolean };
 }
 
 export async function capturePayPalOrder(orderId: string) {

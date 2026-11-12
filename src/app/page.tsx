@@ -105,8 +105,8 @@ export default function Home() {
       if (!available) return;
       if (telegramName) setFirstName(telegramName);
       const paypalStatus = new URLSearchParams(window.location.search).get("paypal");
-      const returnedFromPayPal = startParam === "paypal_connected" || paypalStatus === "connected";
-      const paypalFailed = startParam === "paypal_error" || paypalStatus === "error";
+      const returnedFromPayPal = startParam?.startsWith("paypal_connected") || paypalStatus === "connected";
+      const paypalFailed = startParam?.startsWith("paypal_error") || paypalStatus === "error";
       const linked = await refreshPayPalStatus();
       if (paypalFailed && !linked) showToast("PayPal login did not finish. Check the Sandbox app Return URL and Identity permissions, then try again.");
       let pendingCircleId: string | undefined;
@@ -123,6 +123,10 @@ export default function Home() {
       }
       const linkedCircleId = startParam?.startsWith("circle_")
         ? startParam.slice("circle_".length)
+        : startParam?.startsWith("paypal_connected_")
+          ? startParam.slice("paypal_connected_".length)
+        : startParam?.startsWith("paypal_error_")
+          ? startParam.slice("paypal_error_".length)
         : startParam?.startsWith("paid_")
           ? startParam.slice("paid_".length)
           : pendingCircleId;
@@ -218,7 +222,11 @@ export default function Home() {
   async function connectPayPal() {
     setBusy(true);
     try {
-      const response = await fetch("/api/paypal/connect", { method: "POST", headers: telegramAuthHeaders() });
+      const response = await fetch("/api/paypal/connect", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", ...telegramAuthHeaders() },
+        body: JSON.stringify({ circleId: campaign?.id }),
+      });
       const result = await response.json();
       if (!response.ok) throw new Error(result.error || "Could not open PayPal");
       openExternalLink(result.url);
@@ -457,7 +465,7 @@ export default function Home() {
         <div className="single-tester"><span className="avatar avatar-user">{firstName.slice(0, 1).toUpperCase()}</span><div><b>{funding.contributorCount ? `${firstName}, contribution verified` : `${firstName}, ready to test`}</b><small>No fictional contributors are included.</small></div></div>
         {campaign && <div className="circle-link-actions"><button onClick={shareCircle}>Share Circle link</button><button className={subscribed ? "subscribed" : ""} onClick={subscribeToUpdates}>{subscribed ? "DM updates on ✓" : "Get DM updates"}</button><button onClick={startNewCircle}>New Circle</button></div>}
         {campaign && !campaign.pendingApproval && !fullyFunded && <div className={paypalConnected ? "sandbox-helper linked" : "sandbox-helper"}><span>{paypalConnected ? "✅" : "🧪"}</span><div><b>{paypalConnected ? `PayPal linked${paypalIdentity?.name ? ` as ${paypalIdentity.name}` : ""}` : "Use a Personal Sandbox account"}</b><small>{paypalConnected ? "PayPal does not share a consumer balance with WanderWrap. Checkout will confirm an eligible balance or funding source before you approve payment." : "Your normal PayPal login will not work here. In the PayPal Developer Dashboard, open Testing Tools → Sandbox Accounts and use the generated Personal account email and password."}</small></div></div>}
-        {!fullyFunded && <><label className="test-amount"><span>Contribution</span><div>£ <input value={amount} onChange={(event) => setAmount(event.target.value.replace(/[^0-9.]/g,""))} inputMode="decimal"/></div></label><button className="primary-button" disabled={!campaign || Boolean(campaign?.pendingApproval) || !validAmount || busy} onClick={contribute}>{paypalConnected ? `Pay £${Number(amount || 0).toFixed(2)} with PayPal` : `Link PayPal to pay £${Number(amount || 0).toFixed(2)}`} <span>↗</span></button></>}
+        {!fullyFunded && <><label className="test-amount"><span>Contribution</span><div>£ <input value={amount} onChange={(event) => setAmount(event.target.value.replace(/[^0-9.]/g,""))} inputMode="decimal"/></div></label><button className="primary-button" disabled={!campaign || Boolean(campaign?.pendingApproval) || !validAmount || busy} onClick={contribute}>{campaign?.pendingApproval ? "Waiting for organiser to open contributions" : paypalConnected ? `Pay £${Number(amount || 0).toFixed(2)} with PayPal` : `Link PayPal to pay £${Number(amount || 0).toFixed(2)}`} <span>{campaign?.pendingApproval ? "⏳" : "↗"}</span></button></>}
         {fullyFunded && <><div className="target-reached"><span>✓</span><div><b>Target reached with verified money</b><small>Ribbon can now send the private reveal. Penny keeps payout locked until PayPal enables the required scope.</small></div></div>
           <div className="claim-invite">
             <span>RIBBON · RECIPIENT HANDOFF</span>

@@ -1,5 +1,5 @@
 import { after, NextResponse } from "next/server";
-import { runCircleHarness } from "@/lib/agents/harness";
+import { approveCampaignAction, runCircleHarness } from "@/lib/agents/harness";
 import { listChatEvents, registerImportantEvent } from "@/lib/agents/events";
 import { claimTelegramAction, claimTelegramUpdate } from "@/lib/telegram-updates";
 import { campaignStore } from "@/lib/agents/store";
@@ -143,9 +143,12 @@ async function handleTelegramUpdate(token: string, update: Record<string, any>) 
       consentToAnalyse: memory.consented.has(chatKey), messageHistory: memory.messages.get(chatKey) ?? [],
       recipientEmail, forceNew: true,
     });
-    after(() => notifyCircleCreated(result.campaign.id));
-    await sendMessage(token, message.chat.id, `🎁 <b>${result.campaign.recipient}’s ${result.campaign.occasion} Circle</b>\n\n${result.reply}\n\nShare this message so each person can open the exact Circle and opt into private updates.`, {
-      inline_keyboard: [[{ text: "Open Circle ✨", url: circleMiniAppLink(result.campaign.id) }], [{ text: "Research live gifts 🔎", url: circleMiniAppLink(result.campaign.id) }], [{ text: "Get private updates", url: circleDmOptInLink(result.campaign.id) }], [{ text: "Privacy & consent", callback_data: "privacy" }]],
+    const campaign = result.campaign.pendingApproval === "open_funding"
+      ? (await approveCampaignAction(result.campaign.id, "open_funding") ?? result.campaign)
+      : result.campaign;
+    after(() => notifyCircleCreated(campaign.id));
+    await sendMessage(token, message.chat.id, `🎁 <b>${campaign.recipient}’s ${campaign.occasion} Circle is open</b>\n\nThe £${campaign.targetAmount.toFixed(2)} collection is ready. Share this message so each person can open the exact Circle, link PayPal and contribute privately.`, {
+      inline_keyboard: [[{ text: "Open Circle ✨", url: circleMiniAppLink(campaign.id) }], [{ text: "Research live gifts 🔎", url: circleMiniAppLink(campaign.id) }], [{ text: "Get private updates", url: circleDmOptInLink(campaign.id) }], [{ text: "Privacy & consent", callback_data: "privacy" }]],
     });
   } else if (text.startsWith("/start")) {
     const welcomeKey = String(message.from?.id || message.chat.id);

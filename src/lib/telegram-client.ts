@@ -78,7 +78,7 @@ export function telegramImpact() {
 
 export function openExternalLink(url: string) {
   if (initialized && openLink.isSupported()) {
-    openLink(url, openLink.supports("tryBrowser") ? { tryBrowser: "chrome" } : undefined);
+    openLink(url);
   }
   else window.location.assign(url);
 }

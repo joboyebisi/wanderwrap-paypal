@@ -4,6 +4,7 @@ import { registerPayPalOrder } from "@/lib/paypal-ledger";
 import { authenticateTelegramRequest } from "@/lib/telegram-auth";
 import { campaignStore } from "@/lib/agents/store";
 import { getCircleFunding } from "@/lib/paypal-ledger";
+import { getPayPalIdentity } from "@/lib/paypal-identity";
 
 export async function POST(request: Request) {
   try {
@@ -11,6 +12,7 @@ export async function POST(request: Request) {
     if (!identity) return NextResponse.json({ error: "Telegram authentication required" }, { status: 401 });
     const { amount, circleId } = await request.json();
     if (!circleId) return NextResponse.json({ error: "A Circle is required before contributing" }, { status: 400 });
+    if (!await getPayPalIdentity(identity.id)) return NextResponse.json({ error: "Link PayPal before contributing" }, { status: 409 });
     const numericAmount = Number(amount);
     if (!Number.isFinite(numericAmount) || numericAmount < 1 || numericAmount > 500) {
       return NextResponse.json({ error: "Contribution must be between £1 and £500" }, { status: 400 });
