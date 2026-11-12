@@ -53,6 +53,7 @@ const webhook = webhooksResult.webhooks?.find((candidate) => candidate.id === we
 console.log(JSON.stringify({
   environment: env.PAYPAL_ENV === "live" ? "live" : "sandbox",
   authenticated: true,
+  payoutsScopeAvailable: String(tokenResult.scope || "").includes("https://uri.paypal.com/services/payments/payouts"),
   webhookFound: Boolean(webhook),
   configuredWebhookUrl: webhook?.url || null,
   expectedWebhookUrl: `${appUrl}/api/paypal/webhook`,

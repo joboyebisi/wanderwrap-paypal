@@ -25,6 +25,7 @@ export default function Home() {
   const [firstName, setFirstName] = useState("You");
   const [telegramReady, setTelegramReady] = useState(false);
   const [paypalConnected, setPaypalConnected] = useState(false);
+  const [paypalIdentity, setPaypalIdentity] = useState<{ name?: string; email?: string; verified?: boolean } | null>(null);
   const [amount, setAmount] = useState("10");
   const [busy, setBusy] = useState(false);
   const [toast, setToast] = useState("");
@@ -56,13 +57,39 @@ export default function Home() {
     }
   }, [refreshFunding]);
 
+  const refreshPayPalStatus = useCallback(async () => {
+    const response = await fetch("/api/paypal/status", { headers: telegramAuthHeaders() });
+    if (!response.ok) return false;
+    const result = await response.json();
+    setPaypalConnected(Boolean(result.connected));
+    setPaypalIdentity(result.connected ? result : null);
+    return Boolean(result.connected);
+  }, []);
+
   useEffect(() => {
     void initializeTelegram().then(async ({ available, firstName: telegramName, startParam }) => {
       setTelegramReady(available);
       if (telegramName) setFirstName(telegramName);
       const paypalStatus = new URLSearchParams(window.location.search).get("paypal");
-      if (startParam === "paypal_connected" || paypalStatus === "connected") setPaypalConnected(true);
-      const linkedCircleId = startParam?.startsWith("circle_") ? startParam.slice("circle_".length) : undefined;
+      const returnedFromPayPal = startParam === "paypal_connected" || paypalStatus === "connected";
+      const linked = await refreshPayPalStatus();
+      let pendingCircleId: string | undefined;
+      if (returnedFromPayPal && linked) {
+        const pending = window.localStorage.getItem("wanderwrap:pending-contribution");
+        if (pending) {
+          try {
+            const saved = JSON.parse(pending);
+            if (saved.amount) setAmount(String(saved.amount));
+            if (saved.circleId) pendingCircleId = String(saved.circleId);
+            showToast(`PayPal linked — continue your £${Number(saved.amount || 0).toFixed(2)} contribution`);
+          } catch { showToast("PayPal linked successfully"); }
+        } else showToast("PayPal linked successfully");
+      }
+      const linkedCircleId = startParam?.startsWith("circle_")
+        ? startParam.slice("circle_".length)
+        : startParam?.startsWith("paid_")
+          ? startParam.slice("paid_".length)
+          : pendingCircleId;
       await loadCircle(linkedCircleId);
       if (startParam?.startsWith("paid_") || paypalStatus === "success") {
         setPaypalConnected(true);
@@ -70,7 +97,7 @@ export default function Home() {
         window.setTimeout(() => void loadCircle(), 2500);
       }
     });
-  }, [loadCircle, showToast]);
+  }, [loadCircle, refreshPayPalStatus, showToast]);
 
   const target = campaign?.targetAmount ?? TEST_CIRCLE.targetAmount;
   const progress = Math.min(100, Math.round((funding.total / target) * 100));
@@ -139,6 +166,12 @@ export default function Home() {
 
   async function contribute() {
     if (!campaign || !validAmount) return;
+    if (!paypalConnected) {
+      window.localStorage.setItem("wanderwrap:pending-contribution", JSON.stringify({ circleId: campaign.id, amount }));
+      showToast("Link PayPal first, then we’ll return you to this contribution");
+      await connectPayPal();
+      return;
+    }
     telegramImpact();
     setBusy(true);
     try {
@@ -151,6 +184,7 @@ export default function Home() {
       if (!response.ok) throw new Error(order.error || "Could not start PayPal checkout");
       const approval = order.links?.find((link: { rel: string; href: string }) => link.rel === "payer-action" || link.rel === "approve");
       if (!approval?.href) throw new Error("PayPal approval link was missing");
+      window.localStorage.removeItem("wanderwrap:pending-contribution");
       openExternalLink(approval.href);
     } catch (error) {
       showToast(error instanceof Error ? error.message : "Could not start PayPal");
@@ -197,7 +231,7 @@ export default function Home() {
     <header className="topbar">
       <button className="brand"><span className="brand-mark"><span>W</span></span><span>WanderWrap</span></button>
       <div className="topbar-actions">
-        <button className={paypalConnected ? "paypal-status connected" : "paypal-status"} onClick={connectPayPal}><span>P</span>{paypalConnected ? "Sandbox linked" : "Optional PayPal link"}</button>
+        <button className={paypalConnected ? "paypal-status connected" : "paypal-status"} onClick={connectPayPal}><span>P</span>{paypalConnected ? "PayPal linked" : "Link PayPal"}</button>
         <span className="avatar avatar-user">{firstName.slice(0, 1).toUpperCase()}</span>
       </div>
     </header>
@@ -234,8 +268,8 @@ export default function Home() {
         <div className="funding-meta"><span><b>{funding.contributorCount}</b> verified contributor{funding.contributorCount === 1 ? "" : "s"}</span><span>£{Math.max(0, target - funding.total).toFixed(2)} to go</span></div>
         <div className="single-tester"><span className="avatar avatar-user">{firstName.slice(0, 1).toUpperCase()}</span><div><b>{funding.contributorCount ? `${firstName}, contribution verified` : `${firstName}, ready to test`}</b><small>No fictional contributors are included.</small></div></div>
         {campaign && <div className="circle-link-actions"><button onClick={shareCircle}>Share Circle link</button><button className={subscribed ? "subscribed" : ""} onClick={subscribeToUpdates}>{subscribed ? "DM updates on ✓" : "Get DM updates"}</button></div>}
-        {campaign && !campaign.pendingApproval && !fullyFunded && <div className="sandbox-helper"><span>🧪</span><div><b>Use a Personal Sandbox account</b><small>Your normal PayPal login will not work here. In the PayPal Developer Dashboard, open Testing Tools → Sandbox Accounts and use the generated Personal account email and password.</small></div></div>}
-        {!fullyFunded && <><label className="test-amount"><span>Contribution</span><div>£ <input value={amount} onChange={(event) => setAmount(event.target.value.replace(/[^0-9.]/g,""))} inputMode="decimal"/></div></label><button className="primary-button" disabled={!campaign || Boolean(campaign?.pendingApproval) || !validAmount || busy} onClick={contribute}>Contribute £{Number(amount || 0).toFixed(2)} with PayPal <span>↗</span></button>{campaign && !campaign.pendingApproval && <button className="secondary-button" onClick={connectPayPal}>{paypalConnected ? "Sandbox PayPal profile linked ✓" : "Optional: link a Sandbox PayPal profile"}</button>}</>}
+        {campaign && !campaign.pendingApproval && !fullyFunded && <div className={paypalConnected ? "sandbox-helper linked" : "sandbox-helper"}><span>{paypalConnected ? "✅" : "🧪"}</span><div><b>{paypalConnected ? `PayPal linked${paypalIdentity?.name ? ` as ${paypalIdentity.name}` : ""}` : "Use a Personal Sandbox account"}</b><small>{paypalConnected ? "PayPal does not share a consumer balance with WanderWrap. Checkout will confirm an eligible balance or funding source before you approve payment." : "Your normal PayPal login will not work here. In the PayPal Developer Dashboard, open Testing Tools → Sandbox Accounts and use the generated Personal account email and password."}</small></div></div>}
+        {!fullyFunded && <><label className="test-amount"><span>Contribution</span><div>£ <input value={amount} onChange={(event) => setAmount(event.target.value.replace(/[^0-9.]/g,""))} inputMode="decimal"/></div></label><button className="primary-button" disabled={!campaign || Boolean(campaign?.pendingApproval) || !validAmount || busy} onClick={contribute}>{paypalConnected ? `Continue to PayPal · £${Number(amount || 0).toFixed(2)}` : `Link PayPal to contribute £${Number(amount || 0).toFixed(2)}`} <span>↗</span></button></>}
         {fullyFunded && <><div className="target-reached"><span>✓</span><div><b>Target reached with verified money</b><small>The purchase boundary is now visible.</small></div></div><button className="primary-button" onClick={() => showToast("Retailer purchasing is not connected yet. No order was placed.")}>3. Review purchase boundary <span>→</span></button></>}
       </section>
 

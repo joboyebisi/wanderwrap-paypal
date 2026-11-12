@@ -235,6 +235,34 @@ Acceptance criteria:
 - Participants see that personal-cause contributions may not have purchase or donation protections.
 - A report action pauses new contributions when the trust policy requires review.
 
+### Epic F — Recipient reveal and PayPal money-gift claim
+
+**As a recipient, I want to open an emotional reveal and claim an approved money gift through PayPal so that I can receive it even if I did not already have a PayPal account.**
+
+The claim experience follows the useful product pattern demonstrated by Parity's gift app—an opaque gift claim, recipient invitation, guided account setup and explicit redemption—but uses PayPal rather than a crypto wallet or secret-bearing blockchain voucher.
+
+Acceptance criteria:
+
+- The organiser enters the recipient email only after the Circle is funded and the final money-gift amount is known.
+- WanderWrap creates a single-use, high-entropy claim token, stores only its hash, and gives the claim an expiry and revocation state.
+- The recipient email is sent through an approved transactional-email provider and never appears in Telegram group messages or public link metadata.
+- Opening the claim displays the unwrapping experience and contributor messages before presenting the PayPal claim action.
+- The recipient proves control of the destination email with a short-lived verification code before a payout can be submitted.
+- If the destination email does not have PayPal, PayPal owns the account-creation and payment-claim experience; WanderWrap never collects or stores a PayPal password.
+- A payout requires explicit organiser approval, an enabled PayPal Payouts capability and an idempotency key bound to the Circle and claim.
+- The state machine records `draft`, `ready`, `emailed`, `opened`, `verified`, `payout_submitted`, `unclaimed`, `succeeded`, `returned`, `failed` and `revoked` states.
+- PayPal payout webhooks or verified status reads—not browser redirects—are authoritative for `succeeded`, `unclaimed`, `returned` and `failed` states.
+- If PayPal Payouts is unavailable, the claim page may demonstrate recipient onboarding and reveal UX, but release remains disabled and visibly says that no money was sent.
+- Unclaimed and returned payouts reopen an organiser resolution task; they never silently count as delivered.
+- The claim token cannot expose the Circle ID, recipient email, amount or contributor identities.
+
+Launch dependencies:
+
+- PayPal Payouts enabled and approved for the WanderWrap merchant account;
+- transactional email domain and sender verified in Amazon SES;
+- payout, unclaimed, returned and denied webhook coverage;
+- recipient-email retention, support and sanctions/risk review approved for launch.
+
 ## 7. Agent authority and approval policy
 
 | Action | Wrap may do autonomously | Human approval required |
@@ -307,7 +335,7 @@ Each case must produce an explicit, recoverable state rather than silently conti
 - agent plans, summaries, gift suggestions and approval checkpoints;
 - birthday and occasion message collection;
 - PayPal Sandbox contribution, verification and aggregate progress;
-- recipient unwrapping experience;
+- recipient unwrapping experience and guarded money-gift claim state machine;
 - durable state, idempotent events, consent and audit history.
 
 ### Controlled pilot
@@ -325,6 +353,7 @@ Each case must produce an explicit, recoverable state rather than silently conti
 - escrow, stored balances, crypto or an internal wallet;
 - investment, lending, equity, debt, revenue share or promised returns;
 - autonomous purchasing or payout without human approval;
+- representing a simulated or scope-blocked payout as completed;
 - importing or analysing historical Telegram chats without consent.
 
 ## 12. Success measures
@@ -342,7 +371,7 @@ Each case must produce an explicit, recoverable state rather than silently conti
 
 ## 13. Launch proof points
 
-A convincing end-to-end demonstration shows an admin creating a birthday Circle, sharing its link, participants joining a focused room, prompting Wrap, selecting a suggested gift, contributing through PayPal Sandbox, approving the final action and opening a message-rich recipient reveal. A second demonstration shows a message-only Circle, while investment selection visibly fails closed and explains the regulated-partner requirement.
+A convincing end-to-end demonstration shows an admin creating a birthday Circle, sharing its link in a Telegram group, a second Telegram account joining and opting into DM updates, linking a PayPal Sandbox identity, contributing through PayPal Sandbox, receiving verified aggregate updates, and opening a message-rich recipient reveal. If PayPal Payouts is enabled, the organiser then approves an email-address payout and the recipient follows PayPal's claim/account-creation experience. Without that scope, the release step visibly fails closed. A second demonstration shows a message-only Circle, while investment selection visibly fails closed and explains the regulated-partner requirement.
 
 ## 14. Policy references
 
