@@ -13,7 +13,7 @@ An agentic Telegram Mini App that helps friends remember meaningful moments, und
 ![Telegram](https://img.shields.io/badge/Telegram-Mini_App-26A5E4?logo=telegram)
 ![License](https://img.shields.io/badge/license-MIT-3e9b78)
 
-[Product tour](#the-experience) · [Architecture](#architecture) · [Local setup](#local-development) · [AWS deployment](infra/README.md) · [Agent harness](docs/AGENT_HARNESS.md) · [Reference decisions](docs/REFERENCE_ARCHITECTURE.md)
+[Product tour](#the-experience) · [Product requirements](docs/PRD.md) · [Architecture](#architecture) · [Local setup](#local-development) · [AWS deployment](infra/README.md) · [Agent harness](docs/AGENT_HARNESS.md) · [Reference decisions](docs/REFERENCE_ARCHITECTURE.md)
 
 </div>
 
