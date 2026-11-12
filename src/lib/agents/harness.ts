@@ -28,7 +28,7 @@ function newCampaign(input: HarnessInput): CircleCampaign {
   if (!Number.isFinite(targetAmount) || targetAmount < 1 || targetAmount > 10000) throw new Error("Set a target between £1 and £10,000");
   const occasion = input.occasion?.trim() || (/wedding/i.test(input.prompt) ? "Wedding" : /farewell/i.test(input.prompt) ? "Farewell" : /graduation/i.test(input.prompt) ? "Graduation" : /birthday/i.test(input.prompt) ? "Birthday" : "Celebration");
   const eventDate = input.eventDate?.trim() || input.prompt.match(/\b(\d{4}-\d{2}-\d{2}|next\s+\w+|tomorrow|in\s+\d+\s+days?)\b/i)?.[1] || "To be confirmed";
-  const expectedFromPrompt = input.prompt.match(/\b(\d+)\s+(?:friends|people|contributors|gifters)\b/i)?.[1];
+  const expectedFromPrompt = input.prompt.match(/\b(\d+)\s+(?:friends?|people|contributors?|gifters?)\b/i)?.[1];
   const expectedContributors = Math.max(1, Math.min(500, Number(input.expectedContributors || expectedFromPrompt || 1)));
   const created = now();
   return {

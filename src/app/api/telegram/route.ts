@@ -109,8 +109,13 @@ async function handleTelegramUpdate(token: string, update: Record<string, any>) 
   }
 
   if (text.startsWith("/circle") || text.startsWith("/gift")) {
+    const prompt = text.replace(/^\/(circle|gift)(@\w+)?/, "").trim();
+    if (!prompt) {
+      await sendMessage(token, message.chat.id, "Use <code>/circle Sarah's birthday on 2026-12-18, £10, 1 friend</code>. I’ll create the Circle and return group and private-update links.");
+      return;
+    }
     const result = await runCircleHarness({
-      chatId: chatKey, actorId: String(message.from?.id || "unknown"), prompt: text.replace(/^\/(circle|gift)(@\w+)?/, "").trim() || "Create a birthday Circle",
+      chatId: chatKey, actorId: String(message.from?.id || "unknown"), prompt,
       consentToAnalyse: memory.consented.has(chatKey), messageHistory: memory.messages.get(chatKey) ?? [],
     });
     await sendMessage(token, message.chat.id, `🎁 <b>${result.campaign.recipient}’s ${result.campaign.occasion} Circle</b>\n\n${result.reply}\n\nShare this message so each person can open the exact Circle and opt into private updates.`, {
