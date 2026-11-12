@@ -14,6 +14,16 @@ export function circleDmOptInLink(circleId: string) {
   return username ? `https://t.me/${username}?start=circle_${circleId}` : circleMiniAppLink(circleId);
 }
 
+export function mainMiniAppLink() {
+  const username = (process.env.TELEGRAM_BOT_USERNAME || "").replace(/^@/, "");
+  return username ? `https://t.me/${username}?startapp` : (process.env.NEXT_PUBLIC_APP_URL || "");
+}
+
+export function addBotToGroupLink() {
+  const username = (process.env.TELEGRAM_BOT_USERNAME || "").replace(/^@/, "");
+  return username ? `https://t.me/${username}?startgroup=new_circle` : (process.env.NEXT_PUBLIC_APP_URL || "");
+}
+
 export async function sendTelegramMessage(chatId: string | number, text: string, replyMarkup?: object) {
   const token = process.env.TELEGRAM_BOT_TOKEN;
   if (!token) throw new Error("Telegram bot is not configured");

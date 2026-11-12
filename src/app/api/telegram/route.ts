@@ -1,11 +1,11 @@
 import { after, NextResponse } from "next/server";
 import { runCircleHarness } from "@/lib/agents/harness";
 import { listChatEvents, registerImportantEvent } from "@/lib/agents/events";
-import { claimTelegramUpdate } from "@/lib/telegram-updates";
+import { claimTelegramAction, claimTelegramUpdate } from "@/lib/telegram-updates";
 import { campaignStore } from "@/lib/agents/store";
 import { upsertCircleMember } from "@/lib/circle-members";
 import { getCircleFunding } from "@/lib/paypal-ledger";
-import { circleDmOptInLink, circleMiniAppLink, escapeTelegramHtml } from "@/lib/telegram-bot";
+import { addBotToGroupLink, circleDmOptInLink, circleMiniAppLink, escapeTelegramHtml, mainMiniAppLink } from "@/lib/telegram-bot";
 
 declare global {
   // eslint-disable-next-line no-var
@@ -42,6 +42,16 @@ async function handleTelegramUpdate(token: string, update: Record<string, any>) 
       body: JSON.stringify({ callback_query_id: callback.id, text: "Private Circle updates are off" }),
     });
     if (callback.message?.chat?.id) await sendMessage(token, callback.message.chat.id, "Private updates are off. You can opt in again from the Circle at any time.");
+    return;
+  }
+  if (callback?.data === "how_it_works" && callback.message?.chat?.id) {
+    await fetch(api(token, "answerCallbackQuery"), { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ callback_query_id: callback.id }) });
+    await sendMessage(token, callback.message.chat.id, "✨ <b>How a WanderWrap Circle works</b>\n\n1️⃣ Start in a group or the Mini App\n2️⃣ Share one private Circle link\n3️⃣ Friends contribute through PayPal\n4️⃣ Everyone sees only the group total\n5️⃣ The organiser approves any purchase or release\n6️⃣ The recipient gets a beautiful reveal 🎀", { inline_keyboard: [[{ text: "🎁 Open WanderWrap", url: mainMiniAppLink() }]] });
+    return;
+  }
+  if (callback?.data === "privacy" && callback.message?.chat?.id) {
+    await fetch(api(token, "answerCallbackQuery"), { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ callback_query_id: callback.id }) });
+    await sendMessage(token, callback.message.chat.id, "🔐 <b>Private by design</b>\n\nContribution amounts are never posted to the group. Gift-related context is analysed only after consent. Purchases and money-gift releases always pause for organiser approval.");
     return;
   }
   const message = update.message;
@@ -122,9 +132,11 @@ async function handleTelegramUpdate(token: string, update: Record<string, any>) 
       inline_keyboard: [[{ text: "Open Circle ✨", url: circleMiniAppLink(result.campaign.id) }], [{ text: "Get private updates", url: circleDmOptInLink(result.campaign.id) }], [{ text: "Privacy & consent", callback_data: "privacy" }]],
     });
   } else if (text.startsWith("/start")) {
+    const welcomeKey = String(message.from?.id || message.chat.id);
+    if (!await claimTelegramAction(`WELCOME#${welcomeKey}`, 300)) return;
     await sendMessage(token, message.chat.id,
-      "🎁 <b>Let’s make their day.</b>\n\nI’ll help your group choose a thoughtful gift, split the cost and keep everything moving — with secure PayPal contributions.",
-      { inline_keyboard: [[{ text: "Create a gift Circle ✨", url: appUrl }]] });
+      "🎁 <b>Welcome to WanderWrap</b>\n<i>Great gifts. Together.</i>\n\n✨ Create or join a gift Circle\n💳 Contribute securely with PayPal\n🔔 Get thoughtful private reminders\n🔐 Keep individual amounts private\n🎀 Build a reveal they’ll remember\n\nStart here — I’ll keep the coordination simple.",
+      { inline_keyboard: [[{ text: "🎁 Open WanderWrap", url: mainMiniAppLink() }], [{ text: "➕ Add me to a group", url: addBotToGroupLink() }], [{ text: "✨ How it works", callback_data: "how_it_works" }, { text: "🔐 Privacy", callback_data: "privacy" }]] });
   } else if (memory.consented.has(chatKey)) {
     const buffer = memory.messages.get(chatKey) ?? [];
     buffer.push(`${message.from?.first_name || "Member"}: ${text}`);

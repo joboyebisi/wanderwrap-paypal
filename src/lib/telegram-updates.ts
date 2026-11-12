@@ -35,3 +35,21 @@ export async function claimTelegramUpdate(updateId: number) {
     throw error;
   }
 }
+
+export async function claimTelegramAction(action: string, ttlSeconds = 300) {
+  const db = getDynamo();
+  if (!db) return true;
+  const now = Math.floor(Date.now() / 1000);
+  try {
+    await db.client.send(new PutCommand({
+      TableName: db.table,
+      Item: { pk: `TELEGRAM_ACTION#${action}`, sk: "CLAIMED", expiresAt: now + ttlSeconds },
+      ConditionExpression: "attribute_not_exists(pk) OR expiresAt < :now",
+      ExpressionAttributeValues: { ":now": now },
+    }));
+    return true;
+  } catch (error) {
+    if (error instanceof Error && error.name === "ConditionalCheckFailedException") return false;
+    throw error;
+  }
+}

@@ -197,7 +197,7 @@ export default function Home() {
     <header className="topbar">
       <button className="brand"><span className="brand-mark"><span>W</span></span><span>WanderWrap</span></button>
       <div className="topbar-actions">
-        <button className={paypalConnected ? "paypal-status connected" : "paypal-status"} onClick={connectPayPal}><span>P</span>{paypalConnected ? "Connected" : "Link PayPal"}</button>
+        <button className={paypalConnected ? "paypal-status connected" : "paypal-status"} onClick={connectPayPal}><span>P</span>{paypalConnected ? "Sandbox linked" : "Optional PayPal link"}</button>
         <span className="avatar avatar-user">{firstName.slice(0, 1).toUpperCase()}</span>
       </div>
     </header>
@@ -205,17 +205,18 @@ export default function Home() {
     <section className="content">
       {!telegramReady && <div className="live-notice">Open this page from WanderWrap’s Telegram menu to run the live test.</div>}
 
-      <div className="eyebrow-row"><span className="eyebrow"><i/> ONE-PERSON SANDBOX TEST</span><span className="test-badge">PAYPAL SANDBOX</span></div>
+      <div className="eyebrow-row"><span className="eyebrow"><i/> 🎁 LIVE GIFT CIRCLE</span><span className="test-badge">🧪 SANDBOX</span></div>
       <div className="hero-copy">
         <p className="occasion">{displayed.recipient.toUpperCase()}’S {displayed.occasion.toUpperCase()} · {displayed.eventDate}</p>
-        <h1>You’re the first<br/><em>gifter.</em></h1>
-        <p>This guided Circle starts at £0. Only your completed sandbox contribution will move it.</p>
+        <h1>{firstName}, let’s make<br/><em>{displayed.recipient} smile.</em></h1>
+        <p>You’re the first gifter in this Circle. Your sandbox contribution is the only amount that will move the total.</p>
+        <div className="circle-chips"><span>🎯 £{target} goal</span><span>👤 1 gifter</span><span>🔒 Private amounts</span></div>
       </div>
 
       <section className="agent-console">
-        <div className="agent-console-head"><div className="wrap-orb">W<span>✦</span></div><div><span>WRAP · TEST CONDUCTOR</span><b>{campaign ? "Live Circle active" : "Ready to create real state"}</b></div><button onClick={() => setShowDetails(!showDetails)}>{showDetails ? "−" : "+"}</button></div>
-        <p>{campaign ? "This Circle now exists in DynamoDB. Open funding, connect PayPal, and make one sandbox contribution." : "The recipient and gift direction are a test fixture. The user, PayPal identity, order, capture and contribution total will be real sandbox data."}</p>
-        {!campaign && <button className="agent-action" disabled={!telegramReady || busy} onClick={activateTestCircle}>{busy ? "Creating…" : "Activate this test Circle"}<span>✦</span></button>}
+        <div className="agent-console-head"><div className="wrap-orb">W<span>✦</span></div><div><span>WRAP · CIRCLE CONDUCTOR</span><b>{campaign ? "Your Circle is ready" : "Ready to bring everyone together"}</b></div><button onClick={() => setShowDetails(!showDetails)}>{showDetails ? "−" : "+"}</button></div>
+        <p>{campaign ? "Your Circle is live. Approve funding, share the invite, then make the first secure sandbox contribution." : `I’ve prepared a simple Circle for ${displayed.recipient}. Start it when you’re ready — no one is charged automatically.`}</p>
+        {!campaign && <button className="agent-action" disabled={!telegramReady || busy} onClick={activateTestCircle}>{busy ? "Creating…" : `Start ${displayed.recipient}’s Circle`}<span>✨</span></button>}
         {campaign?.pendingApproval === "open_funding" && <div className="approval-box"><div><span>YOUR APPROVAL</span><b>Open the £{campaign.targetAmount} collection?</b><small>No charge occurs until you approve in PayPal.</small></div><button onClick={approveFunding}>Approve</button></div>}
         {campaign && !campaign.pendingApproval && <div className="agent-success"><span>✓</span><div><b>Funding is open</b><small>Only verified PayPal captures count.</small></div></div>}
         {showDetails && campaign && <div className="agent-team">{campaign.traces.map((trace) => <div key={trace.id} className={trace.status === "complete" ? "complete" : ""}><span>✦</span><p><b>{trace.label}</b><small>{trace.summary}</small></p><i>{trace.status === "complete" ? "✓" : "·"}</i></div>)}</div>}
@@ -223,8 +224,8 @@ export default function Home() {
 
       <article className="gift-card">
         <div className="gift-visual"><span className="live-gift-emoji">{selectedGift?.emoji ?? "🎁"}</span></div>
-        <div className="gift-details"><div><span className="ai-pill">✦ TEST GIFT DIRECTION</span><h2>{selectedGift?.name ?? "Personalised birthday keepsake"}</h2></div><span className="price">£{selectedGift?.price ?? 7}</span></div>
-        <p className="ai-note">{selectedGift?.rationale ?? "A deliberately simple gift direction for validating the end-to-end contribution flow."}</p>
+        <div className="gift-details"><div><span className="ai-pill">✨ THOUGHTFUL GIFT IDEA</span><h2>{selectedGift?.name ?? "Personalised birthday keepsake"}</h2></div><span className="price">£{selectedGift?.price ?? 7}</span></div>
+        <p className="ai-note">{selectedGift?.rationale ?? `A personal direction the group can refine for ${displayed.recipient}.`}</p>
       </article>
 
       <section className="funding-card">
@@ -233,12 +234,12 @@ export default function Home() {
         <div className="funding-meta"><span><b>{funding.contributorCount}</b> verified contributor{funding.contributorCount === 1 ? "" : "s"}</span><span>£{Math.max(0, target - funding.total).toFixed(2)} to go</span></div>
         <div className="single-tester"><span className="avatar avatar-user">{firstName.slice(0, 1).toUpperCase()}</span><div><b>{funding.contributorCount ? `${firstName}, contribution verified` : `${firstName}, ready to test`}</b><small>No fictional contributors are included.</small></div></div>
         {campaign && <div className="circle-link-actions"><button onClick={shareCircle}>Share Circle link</button><button className={subscribed ? "subscribed" : ""} onClick={subscribeToUpdates}>{subscribed ? "DM updates on ✓" : "Get DM updates"}</button></div>}
-        {!paypalConnected && <button className="primary-button" disabled={!campaign || Boolean(campaign?.pendingApproval) || busy} onClick={connectPayPal}>1. Link your PayPal sandbox account <span>↗</span></button>}
-        {paypalConnected && !fullyFunded && <><label className="test-amount"><span>Contribution</span><div>£ <input value={amount} onChange={(event) => setAmount(event.target.value.replace(/[^0-9.]/g,""))} inputMode="decimal"/></div></label><button className="primary-button" disabled={!campaign || Boolean(campaign?.pendingApproval) || !validAmount || busy} onClick={contribute}>2. Contribute with PayPal <span>↗</span></button></>}
+        {campaign && !campaign.pendingApproval && !fullyFunded && <div className="sandbox-helper"><span>🧪</span><div><b>Use a Personal Sandbox account</b><small>Your normal PayPal login will not work here. In the PayPal Developer Dashboard, open Testing Tools → Sandbox Accounts and use the generated Personal account email and password.</small></div></div>}
+        {!fullyFunded && <><label className="test-amount"><span>Contribution</span><div>£ <input value={amount} onChange={(event) => setAmount(event.target.value.replace(/[^0-9.]/g,""))} inputMode="decimal"/></div></label><button className="primary-button" disabled={!campaign || Boolean(campaign?.pendingApproval) || !validAmount || busy} onClick={contribute}>Contribute £{Number(amount || 0).toFixed(2)} with PayPal <span>↗</span></button>{campaign && !campaign.pendingApproval && <button className="secondary-button" onClick={connectPayPal}>{paypalConnected ? "Sandbox PayPal profile linked ✓" : "Optional: link a Sandbox PayPal profile"}</button>}</>}
         {fullyFunded && <><div className="target-reached"><span>✓</span><div><b>Target reached with verified money</b><small>The purchase boundary is now visible.</small></div></div><button className="primary-button" onClick={() => showToast("Retailer purchasing is not connected yet. No order was placed.")}>3. Review purchase boundary <span>→</span></button></>}
       </section>
 
-      <section className="timeline-card"><div className="section-title"><div><span>LIVE TEST FLOW</span><h3>What is real in this run</h3></div><span className="mini-gift">🎁</span></div><ol className="timeline"><li className={campaign ? "done" : "active"}><span>{campaign ? "✓" : "1"}</span><div><b>Circle stored in DynamoDB</b><small>One controlled recipient fixture</small></div></li><li className={paypalConnected ? "done" : campaign ? "active" : ""}><span>{paypalConnected ? "✓" : "2"}</span><div><b>Your PayPal identity linked</b><small>Sandbox OAuth, not a simulated login</small></div></li><li className={fullyFunded ? "done" : paypalConnected ? "active" : ""}><span>{fullyFunded ? "✓" : "3"}</span><div><b>Your contribution captured</b><small>Webhook-verified PayPal amount</small></div></li><li className={fullyFunded ? "active" : ""}><span>4</span><div><b>Purchase approval boundary</b><small>No retailer purchase is executed in this build</small></div></li></ol></section>
+      <section className="timeline-card"><div className="section-title"><div><span>YOUR CIRCLE JOURNEY</span><h3>From invite to unforgettable</h3></div><span className="mini-gift">🎀</span></div><ol className="timeline"><li className={campaign ? "done" : "active"}><span>{campaign ? "✓" : "1"}</span><div><b>Start the Circle 🎁</b><small>Create the shared space and invite link</small></div></li><li className={campaign && !campaign.pendingApproval ? "done" : campaign ? "active" : ""}><span>{campaign && !campaign.pendingApproval ? "✓" : "2"}</span><div><b>Open contributions 💛</b><small>The organiser stays in control</small></div></li><li className={fullyFunded ? "done" : campaign && !campaign.pendingApproval ? "active" : ""}><span>{fullyFunded ? "✓" : "3"}</span><div><b>Contribute with PayPal 🅿️</b><small>Use a Personal Sandbox account for this test</small></div></li><li className={fullyFunded ? "active" : ""}><span>4</span><div><b>Approve the final gift ✨</b><small>No purchase happens without confirmation</small></div></li></ol></section>
     </section>
     {toast && <div className="toast">{toast}</div>}{busy && <div className="busy-bar"/>}
   </main>;
