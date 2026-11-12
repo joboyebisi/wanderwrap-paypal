@@ -1,0 +1,112 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: WanderWrap Circles development container build pipeline
+
+Parameters:
+  RepositoryUrl:
+    Type: String
+    Default: https://github.com/joboyebisi/wanderwrap-paypal.git
+  Branch:
+    Type: String
+    Default: main
+
+Resources:
+  ContainerRepository:
+    Type: AWS::ECR::Repository
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      RepositoryName: wanderwrap-circles
+      ImageScanningConfiguration:
+        ScanOnPush: true
+      ImageTagMutability: MUTABLE
+      EncryptionConfiguration:
+        EncryptionType: AES256
+      LifecyclePolicy:
+        LifecyclePolicyText: |
+          {
+            "rules": [{
+              "rulePriority": 1,
+              "description": "Keep the latest ten development images",
+              "selection": {"tagStatus": "any", "countType": "imageCountMoreThan", "countNumber": 10},
+              "action": {"type": "expire"}
+            }]
+          }
+      Tags:
+        - { Key: Project, Value: WanderWrap-Circles }
+        - { Key: Environment, Value: development }
+
+  BuildRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: WanderWrapCirclesCodeBuildRole
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal: { Service: codebuild.amazonaws.com }
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: BuildContainer
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action: ecr:GetAuthorizationToken
+                Resource: '*'
+              - Effect: Allow
+                Action:
+                  - ecr:BatchCheckLayerAvailability
+                  - ecr:CompleteLayerUpload
+                  - ecr:GetDownloadUrlForLayer
+                  - ecr:InitiateLayerUpload
+                  - ecr:PutImage
+                  - ecr:UploadLayerPart
+                Resource: !GetAtt ContainerRepository.Arn
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource: !Sub 'arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/codebuild/wanderwrap-circles-build*'
+      Tags:
+        - { Key: Project, Value: WanderWrap-Circles }
+
+  BuildProject:
+    Type: AWS::CodeBuild::Project
+    Properties:
+      Name: wanderwrap-circles-build
+      Description: Builds the WanderWrap Circles Lambda container from GitHub
+      ServiceRole: !GetAtt BuildRole.Arn
+      Source:
+        Type: GITHUB
+        Location: !Ref RepositoryUrl
+        GitCloneDepth: 1
+        BuildSpec: buildspec.aws.yml
+      SourceVersion: !Sub 'refs/heads/${Branch}'
+      Artifacts:
+        Type: NO_ARTIFACTS
+      Environment:
+        Type: LINUX_CONTAINER
+        ComputeType: BUILD_GENERAL1_SMALL
+        Image: aws/codebuild/standard:7.0
+        PrivilegedMode: true
+        EnvironmentVariables:
+          - Name: ECR_REPOSITORY_URI
+            Value: !GetAtt ContainerRepository.RepositoryUri
+          - Name: ECR_REGISTRY
+            Value: !Sub '${AWS::AccountId}.dkr.ecr.${AWS::Region}.${AWS::URLSuffix}'
+      LogsConfig:
+        CloudWatchLogs:
+          Status: ENABLED
+          GroupName: /aws/codebuild/wanderwrap-circles-build
+      TimeoutInMinutes: 20
+      QueuedTimeoutInMinutes: 30
+      Tags:
+        - { Key: Project, Value: WanderWrap-Circles }
+        - { Key: Environment, Value: development }
+
+Outputs:
+  BuildProjectName:
+    Value: !Ref BuildProject
+  RepositoryUri:
+    Value: !GetAtt ContainerRepository.RepositoryUri

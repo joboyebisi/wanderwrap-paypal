@@ -1,0 +1,180 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: WanderWrap Circles pay-per-use development environment
+
+Parameters:
+  ImageUri:
+    Type: String
+    Description: ECR container image URI including its immutable commit tag
+
+Resources:
+  CirclesTable:
+    Type: AWS::DynamoDB::Table
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      TableName: wanderwrap-circles-development
+      BillingMode: PAY_PER_REQUEST
+      DeletionProtectionEnabled: false
+      PointInTimeRecoverySpecification:
+        PointInTimeRecoveryEnabled: true
+      SSESpecification:
+        SSEEnabled: true
+      TimeToLiveSpecification:
+        AttributeName: expiresAt
+        Enabled: true
+      AttributeDefinitions:
+        - { AttributeName: pk, AttributeType: S }
+        - { AttributeName: sk, AttributeType: S }
+        - { AttributeName: gsi1pk, AttributeType: S }
+        - { AttributeName: gsi1sk, AttributeType: S }
+      KeySchema:
+        - { AttributeName: pk, KeyType: HASH }
+        - { AttributeName: sk, KeyType: RANGE }
+      GlobalSecondaryIndexes:
+        - IndexName: gsi1
+          KeySchema:
+            - { AttributeName: gsi1pk, KeyType: HASH }
+            - { AttributeName: gsi1sk, KeyType: RANGE }
+          Projection: { ProjectionType: ALL }
+      Tags:
+        - { Key: Project, Value: WanderWrap-Circles }
+        - { Key: Environment, Value: development }
+
+  FunctionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: WanderWrapCirclesDevelopmentRole
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal: { Service: lambda.amazonaws.com }
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: CirclesRuntime
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - dynamodb:GetItem
+                  - dynamodb:PutItem
+                  - dynamodb:Query
+                  - dynamodb:UpdateItem
+                Resource:
+                  - !GetAtt CirclesTable.Arn
+                  - !Sub '${CirclesTable.Arn}/index/*'
+              - Effect: Allow
+                Action:
+                  - bedrock:InvokeModel
+                  - bedrock:InvokeModelWithResponseStream
+                Resource: '*'
+      Tags:
+        - { Key: Project, Value: WanderWrap-Circles }
+
+  AppLogGroup:
+    Type: AWS::Logs::LogGroup
+    DeletionPolicy: Retain
+    Properties:
+      LogGroupName: /aws/lambda/wanderwrap-circles-development
+      RetentionInDays: 14
+
+  AppFunction:
+    Type: AWS::Lambda::Function
+    DependsOn: AppLogGroup
+    Properties:
+      FunctionName: wanderwrap-circles-development
+      Description: WanderWrap Telegram Mini App development environment
+      PackageType: Image
+      Code:
+        ImageUri: !Ref ImageUri
+      Architectures: [x86_64]
+      MemorySize: 1536
+      Timeout: 60
+      ReservedConcurrentExecutions: 5
+      Role: !GetAtt FunctionRole.Arn
+      Environment:
+        Variables:
+          NEXT_PUBLIC_APP_URL: !Sub 'https://${HttpApi}.execute-api.${AWS::Region}.${AWS::URLSuffix}'
+          DYNAMODB_TABLE: !Ref CirclesTable
+          BEDROCK_MODEL_ID: eu.amazon.nova-2-lite-v1:0
+          ALLOW_DEMO_AUTH: 'true'
+          NODE_OPTIONS: --enable-source-maps
+      Tags:
+        - { Key: Project, Value: WanderWrap-Circles }
+        - { Key: Environment, Value: development }
+
+  HttpApi:
+    Type: AWS::ApiGatewayV2::Api
+    Properties:
+      Name: wanderwrap-circles-development
+      Description: Development HTTPS endpoint for WanderWrap Circles
+      ProtocolType: HTTP
+      Tags:
+        Project: WanderWrap-Circles
+        Environment: development
+
+  AppIntegration:
+    Type: AWS::ApiGatewayV2::Integration
+    Properties:
+      ApiId: !Ref HttpApi
+      IntegrationType: AWS_PROXY
+      IntegrationUri: !GetAtt AppFunction.Arn
+      PayloadFormatVersion: '2.0'
+      TimeoutInMillis: 30000
+
+  DefaultRoute:
+    Type: AWS::ApiGatewayV2::Route
+    Properties:
+      ApiId: !Ref HttpApi
+      RouteKey: $default
+      Target: !Sub 'integrations/${AppIntegration}'
+
+  DefaultStage:
+    Type: AWS::ApiGatewayV2::Stage
+    Properties:
+      ApiId: !Ref HttpApi
+      StageName: $default
+      AutoDeploy: true
+      DefaultRouteSettings:
+        DetailedMetricsEnabled: true
+        ThrottlingBurstLimit: 50
+        ThrottlingRateLimit: 25
+      Tags:
+        Project: WanderWrap-Circles
+        Environment: development
+
+  InvokePermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !Ref AppFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub 'arn:${AWS::Partition}:execute-api:${AWS::Region}:${AWS::AccountId}:${HttpApi}/*'
+
+  ErrorAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: wanderwrap-circles-development-errors
+      AlarmDescription: WanderWrap Circles Lambda errors
+      Namespace: AWS/Lambda
+      MetricName: Errors
+      Dimensions:
+        - Name: FunctionName
+          Value: !Ref AppFunction
+      Statistic: Sum
+      Period: 300
+      EvaluationPeriods: 1
+      Threshold: 1
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      TreatMissingData: notBreaching
+
+Outputs:
+  AppUrl:
+    Value: !Sub 'https://${HttpApi}.execute-api.${AWS::Region}.${AWS::URLSuffix}'
+  FunctionName:
+    Value: !Ref AppFunction
+  TableName:
+    Value: !Ref CirclesTable

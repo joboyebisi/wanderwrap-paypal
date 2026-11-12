@@ -1,5 +1,11 @@
 # AWS deployment
 
+## Fast development environment
+
+`circles-build.yaml` creates an ECR repository and a small CodeBuild project that builds this public GitHub repository without requiring Docker locally. `circles-lambda-dev.yaml` then runs the container with Lambda Web Adapter behind an HTTP API, using DynamoDB and Bedrock on a pay-per-use basis. This development stack deliberately leaves Telegram and PayPal credentials unconfigured and enables browser demo authentication; never promote that setting to production.
+
+The original App Runner template remains available for an eligible existing App Runner account. The Lambda development path is the preferred way to get the current prototype online quickly.
+
 The app ships as a standalone Next.js container for AWS App Runner. App Runner gives the Telegram webhook a stable HTTPS endpoint and keeps the same service available for the Mini App UI and PayPal callbacks. The stack also provisions DynamoDB point-in-time recovery and encryption, update deduplication TTL, explicit autoscaling, X-Ray tracing and retained production data.
 
 > **Account check:** AWS now limits App Runner to existing customers. Run `aws apprunner list-services --region eu-west-2` before treating this as the deployment target. If the account cannot create App Runner services, AWS recommends ECS Express Mode; the Lambda + CloudFront architecture in the AWS Telegram sample is also a scale-to-zero option. Do not weaken the application controls to fit a different host.

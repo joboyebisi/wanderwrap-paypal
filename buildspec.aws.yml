@@ -1,0 +1,17 @@
+version: 0.2
+
+env:
+  shell: bash
+
+phases:
+  pre_build:
+    commands:
+      - IMAGE_TAG=$(echo "$CODEBUILD_RESOLVED_SOURCE_VERSION" | cut -c 1-12)
+      - aws ecr get-login-password --region "$AWS_DEFAULT_REGION" | docker login --username AWS --password-stdin "$ECR_REGISTRY"
+  build:
+    commands:
+      - docker build --pull -t "$ECR_REPOSITORY_URI:$IMAGE_TAG" -t "$ECR_REPOSITORY_URI:latest" .
+  post_build:
+    commands:
+      - docker push "$ECR_REPOSITORY_URI:$IMAGE_TAG"
+      - docker push "$ECR_REPOSITORY_URI:latest"
