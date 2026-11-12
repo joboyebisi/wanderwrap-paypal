@@ -75,7 +75,7 @@ In **PayPal Developer Dashboard → Apps & Credentials → Sandbox → the exist
 npm run paypal:verify
 ```
 
-Keep `PAYPAL_PAYOUTS_ENABLED=false` until the script reports that the effective access token has Payouts. The flag is a deployment gate, not a substitute for PayPal approval.
+Keep `PAYPAL_PAYOUTS_ENABLED=false` until the script reports that the effective access token has Payouts and the payout execution plus item-level webhook worker have been implemented and reviewed. The flag is a deployment gate, not a substitute for PayPal approval or verified payout status.
 
 ## 7. Amazon SES recipient email
 

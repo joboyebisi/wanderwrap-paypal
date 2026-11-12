@@ -143,7 +143,7 @@ npm audit
 | `PAYPAL_CLIENT_ID` / `PAYPAL_CLIENT_SECRET` | Sandbox or live REST application credentials; server only |
 | `PAYPAL_WEBHOOK_ID` | Verifies PayPal webhook signatures |
 | `PAYPAL_OAUTH_STATE_SECRET` | Signs short-lived Log in with PayPal state |
-| `PAYPAL_PAYOUTS_ENABLED` | Fail-closed feature flag; keep `false` until the effective access token includes Payouts |
+| `PAYPAL_PAYOUTS_ENABLED` | Fail-closed feature flag; keep `false` until scope, payout execution, and webhook reconciliation are all implemented and reviewed |
 | `PAYPAL_ENV` | `sandbox` or `live` |
 | `AWS_REGION` | Bedrock and DynamoDB source region; default `eu-west-2` |
 | `BEDROCK_MODEL_ID` | Bedrock model or inference profile ID |

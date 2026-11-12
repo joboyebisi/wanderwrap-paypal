@@ -82,7 +82,7 @@ Every order has a Circle reference and idempotency key. A Circle total is derive
 
 Ribbon can send an Amazon SES email only when Telegram authentication succeeds, the Circle exists, and verified funding reaches the target. New Circles record the organiser's Telegram ID, so another member cannot create the recipient claim. Claim links expire after 30 days, and DynamoDB receives only a SHA-256 hash of the random bearer token.
 
-`PAYPAL_PAYOUTS_ENABLED` defaults to `false`. This flag is an additional deployment gate, not proof of account authority. It may be enabled only after `npm run paypal:verify` confirms the access token includes the Payouts scope. The production payout worker must still wait for item-level webhook state before marking a claim paid.
+`PAYPAL_PAYOUTS_ENABLED` defaults to `false`. This flag is an additional deployment gate, not proof of account authority. It may be enabled only after `npm run paypal:verify` confirms the Payouts scope and the payout execution plus item-level webhook worker have been implemented and reviewed. The production worker must still wait for item-level webhook state before marking a claim paid.
 
 ## State and deployment
 
