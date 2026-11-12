@@ -20,11 +20,18 @@ const TEST_CIRCLE = {
   expectedContributors: 1,
 };
 
+type ClientSurface = "detecting" | "telegram" | "web";
+
 export default function Home() {
   const [campaign, setCampaign] = useState<CircleCampaign | null>(null);
   const [funding, setFunding] = useState({ total: 0, contributorCount: 0 });
   const [firstName, setFirstName] = useState("You");
   const [telegramReady, setTelegramReady] = useState(false);
+  const [clientSurface, setClientSurface] = useState<ClientSurface>("detecting");
+  const [telegramPlatform, setTelegramPlatform] = useState("");
+  const [deviceLabel, setDeviceLabel] = useState("browser");
+  const [telegramLaunchUrl, setTelegramLaunchUrl] = useState("https://t.me/WanderWrapCirclesBot?startapp");
+  const [botUrl, setBotUrl] = useState("https://t.me/WanderWrapCirclesBot");
   const [paypalConnected, setPaypalConnected] = useState(false);
   const [paypalIdentity, setPaypalIdentity] = useState<{ name?: string; email?: string; verified?: boolean } | null>(null);
   const [amount, setAmount] = useState("10");
@@ -75,8 +82,21 @@ export default function Home() {
   }, []);
 
   useEffect(() => {
-    void initializeTelegram().then(async ({ available, firstName: telegramName, startParam }) => {
+    void initializeTelegram().then(async ({ available, platform, firstName: telegramName, startParam }) => {
       setTelegramReady(available);
+      setClientSurface(available ? "telegram" : "web");
+      setTelegramPlatform(platform || "");
+      const isMobile = /Android|iPhone|iPad|iPod|Mobile/i.test(window.navigator.userAgent) || window.navigator.maxTouchPoints > 1;
+      setDeviceLabel(isMobile ? "mobile browser" : "desktop browser");
+      const browserCircleId = new URLSearchParams(window.location.search).get("circleId") || undefined;
+      void fetch(`/api/app-context${browserCircleId ? `?circleId=${encodeURIComponent(browserCircleId)}` : ""}`)
+        .then((response) => response.ok ? response.json() : null)
+        .then((context) => {
+          if (context?.telegramLaunchUrl) setTelegramLaunchUrl(context.telegramLaunchUrl);
+          if (context?.botUrl) setBotUrl(context.botUrl);
+        })
+        .catch(() => undefined);
+      if (!available) return;
       if (telegramName) setFirstName(telegramName);
       const paypalStatus = new URLSearchParams(window.location.search).get("paypal");
       const returnedFromPayPal = startParam === "paypal_connected" || paypalStatus === "connected";
@@ -108,6 +128,10 @@ export default function Home() {
       }
     });
   }, [loadCircle, refreshPayPalStatus, showToast]);
+
+  function openInTelegram() {
+    window.location.assign(telegramLaunchUrl);
+  }
 
   const target = campaign?.targetAmount ?? TEST_CIRCLE.targetAmount;
   const progress = Math.min(100, Math.round((funding.total / target) * 100));
@@ -308,15 +332,22 @@ export default function Home() {
   return <main className="app-shell">
     <div className="ambient ambient-one"/><div className="ambient ambient-two"/>
     <header className="topbar">
-      <button className="brand"><span className="brand-mark"><Image src="/brand/wanderwrap-mark.png" alt="" width={34} height={34} priority/></span><span>WanderWrap</span></button>
+      <button className="brand" onClick={telegramReady ? undefined : openInTelegram}><span className="brand-mark"><Image src="/brand/wanderwrap-mark.png" alt="WanderWrap gift ribbon" width={34} height={34} priority unoptimized/></span><span>WanderWrap</span></button>
       <div className="topbar-actions">
-        <button className={paypalConnected ? "paypal-status connected" : "paypal-status"} onClick={connectPayPal}><span>P</span>{paypalConnected ? "PayPal linked" : "Link PayPal"}</button>
+        <span className={telegramReady ? "surface-chip telegram" : "surface-chip web"}>{telegramReady ? `Telegram${telegramPlatform ? ` · ${telegramPlatform}` : ""}` : "Web preview"}</span>
+        <button className={paypalConnected ? "paypal-status connected" : "paypal-status"} onClick={telegramReady ? connectPayPal : openInTelegram}><span>{telegramReady ? "P" : "➤"}</span>{telegramReady ? (paypalConnected ? "PayPal linked" : "Link PayPal") : "Open Telegram"}</button>
         <span className="avatar avatar-user">{firstName.slice(0, 1).toUpperCase()}</span>
       </div>
     </header>
 
     <section className="content">
-      {!telegramReady && <div className="live-notice">Open this page from WanderWrap’s Telegram menu to run the live test.</div>}
+      {clientSurface === "detecting" && <div className="live-notice">Detecting the best WanderWrap experience…</div>}
+      {clientSurface === "web" && <section className="telegram-bridge">
+        <div className="telegram-bridge-icon"><Image src="/brand/wanderwrap-mark.png" alt="WanderWrap" width={58} height={58} unoptimized/></div>
+        <div className="telegram-bridge-copy"><span>YOU’RE ON THE WEB · {deviceLabel.toUpperCase()}</span><h2>Bring this Circle into Telegram</h2><p>Open the secure Mini App to identify your Telegram account, join the right Circle, receive private updates and contribute with PayPal.</p></div>
+        <div className="telegram-bridge-actions"><button onClick={openInTelegram}>Open WanderWrap in Telegram <span>↗</span></button><a href={botUrl} target="_blank" rel="noreferrer">Message @WanderWrapCirclesBot</a></div>
+        <small>Telegram supplies signed Mini App session data after you open it. WanderWrap does not guess or trust identity from this web page.</small>
+      </section>}
 
       <div className="eyebrow-row"><span className="eyebrow"><i/> 🎁 LIVE GIFT CIRCLE</span><span className="test-badge">🧪 SANDBOX</span></div>
       <div className="hero-copy">

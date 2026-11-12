@@ -10,6 +10,7 @@ import {
   openLink,
   openTelegramLink,
   safeInit,
+  safeRetrieveLaunchParams,
   shareURL,
   swipeBehavior,
   themeParams,
@@ -20,6 +21,8 @@ export { backButton, closingBehavior, mainButton };
 
 export interface TelegramClientState {
   available: boolean;
+  surface: "telegram" | "web";
+  platform?: string;
   firstName?: string;
   startParam?: string;
 }
@@ -28,12 +31,14 @@ let initialized = false;
 
 export async function initializeTelegram(): Promise<TelegramClientState> {
   if (initialized) {
-    return { available: true, firstName: initData.user()?.first_name, startParam: initData.startParam() };
+    const launch = safeRetrieveLaunchParams();
+    return { available: true, surface: "telegram", platform: launch.ok ? launch.data.tgWebAppPlatform : undefined, firstName: initData.user()?.first_name, startParam: initData.startParam() };
   }
 
   const result = safeInit();
-  if (!result.ok) return { available: false };
+  if (!result.ok) return { available: false, surface: "web" };
   initialized = true;
+  const launch = safeRetrieveLaunchParams();
 
   initData.safeRestore();
   themeParams.mount();
@@ -60,7 +65,7 @@ export async function initializeTelegram(): Promise<TelegramClientState> {
     swipeBehavior.enableVertical();
   }
 
-  return { available: true, firstName: initData.user()?.first_name, startParam: initData.startParam() };
+  return { available: true, surface: "telegram", platform: launch.ok ? launch.data.tgWebAppPlatform : undefined, firstName: initData.user()?.first_name, startParam: initData.startParam() };
 }
 
 export function telegramAuthHeaders() {

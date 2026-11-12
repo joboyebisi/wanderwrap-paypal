@@ -107,6 +107,8 @@ The administrator can:
 
 The bot must not add people to a Telegram group without the person's or group's action. “Add” means creating an invitation or membership record within the permissions Telegram provides.
 
+When a Circle or WanderWrap URL opens in an ordinary browser, the application detects that no signed Telegram launch context exists and presents an explicit Telegram handoff. The handoff preserves the Circle ID through `startapp` so the user arrives in the correct Mini App state. Web browser presence alone never creates a member identity or authorises a payment action.
+
 ### 5.3 Enter the Circle Room
 
 Opening the link displays a concise preview: purpose, organiser, deadline, privacy level and whether money is being collected. A participant confirms their display identity and joins.

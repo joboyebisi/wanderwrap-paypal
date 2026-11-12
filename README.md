@@ -39,6 +39,8 @@ The AI proposes; people decide. No chat analysis, fundraising, purchase, payout 
 5. **Approve and fulfil** — Porter checks the final gift, price, timing and delivery plan, then pauses for organiser approval.
 6. **Unwrap emotionally** — Ribbon turns real contributor messages into a delightful reveal where the recipient can choose the PayPal money gift or the personalised product Scout found.
 
+Web visitors are detected separately from signed Telegram Mini App sessions. The public page presents a safe preview and an **Open in Telegram** handoff; if the URL contains a Circle ID, that handoff preserves it as the Telegram `startapp` parameter. Inside Telegram, WanderWrap also records the client platform reported by the Mini App SDK and enables authenticated Circle, PayPal and notification actions.
+
 The current sandbox build completes the journey through a verified contribution and an emailed, expiring recipient reveal. Money-gift payout remains visibly locked until PayPal grants the app's Payouts scope.
 
 ### Telegram commands
@@ -163,6 +165,7 @@ Never commit `.env.local`, PayPal secrets, bot tokens or AWS credentials.
 ## Security and privacy
 
 - Telegram `initData` is validated server-side with the official Web Crypto validator and a one-hour lifetime.
+- Browser presence is never treated as Telegram identity. Web visitors must deliberately open the bot's Main Mini App before authenticated actions become available.
 - Telegram webhook updates are secret-verified, deduplicated in DynamoDB and acknowledged before agent work runs.
 - Telegram group identity is derived from signed init data rather than trusted from request JSON.
 - Chat analysis is opt-in, bounded and stoppable from the group.
