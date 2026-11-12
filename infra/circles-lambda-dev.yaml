@@ -18,9 +18,15 @@ Parameters:
     Default: 'false'
     AllowedValues: ['true', 'false']
     Description: Configure the Telegram menu, commands, and webhook during this deployment
+  EnableChannel3:
+    Type: String
+    Default: 'false'
+    AllowedValues: ['true', 'false']
+    Description: Resolve CHANNEL3_API_KEY from the credentials secret after the key has been added
 
 Conditions:
   ConfigureTelegramEnabled: !Equals [!Ref ConfigureTelegram, 'true']
+  Channel3Enabled: !Equals [!Ref EnableChannel3, 'true']
 
 Resources:
   CirclesTable:
@@ -250,6 +256,11 @@ Resources:
           CREDENTIALS_REVISION: !Ref CredentialsRevision
           DYNAMODB_TABLE: !Ref CirclesTable
           BEDROCK_MODEL_ID: eu.amazon.nova-2-lite-v1:0
+          CHANNEL3_API_KEY: !If
+            - Channel3Enabled
+            - !Sub '{{resolve:secretsmanager:${CredentialsSecretId}:SecretString:CHANNEL3_API_KEY}}'
+            - ''
+          CHANNEL3_API_BASE_URL: https://api.trychannel3.com/v1
           SES_FROM_EMAIL: WanderWrap <hi@chatpye.com>
           ALLOW_DEMO_AUTH: 'false'
           NODE_OPTIONS: --enable-source-maps

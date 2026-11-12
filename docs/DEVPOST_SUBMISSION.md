@@ -4,7 +4,7 @@
 
 ## Elevator pitch
 
-WanderWrap Circles is an agentic Telegram group-gifting experience that remembers meaningful moments, turns consented context into thoughtful gift directions, coordinates private PayPal contributions, and delivers an emotional recipient reveal.
+WanderWrap Circles is an agentic Telegram group-gifting experience that turns consented recipient clues into live Channel3 product options, coordinates private PayPal contributions, and lets the recipient unwrap a personalised gift or money gift.
 
 ## Project Story
 
@@ -22,7 +22,7 @@ An organiser adds `@WanderWrapCirclesBot` to a Telegram group and asks it to cre
 
 - **Spark** recognises explicitly supplied birthdays and milestones.
 - **Sage** reads only consented, gift-relevant context and extracts safe preference signals.
-- **Scout** proposes distinct, budget-aware gift directions.
+- **Scout** turns organiser-approved public clues into live, budget-aware Channel3 product cards with images, availability and retailer offers.
 - **Rally** coordinates the target, participation, reminders, and private DM updates.
 - **Penny** opens PayPal checkout and counts only server-verified captures.
 - **Porter** prepares the purchase or fulfilment handoff behind organiser approval.
@@ -31,7 +31,7 @@ An organiser adds `@WanderWrapCirclesBot` to a Telegram group and asks it to cre
 
 Members open the Telegram Mini App from the group link or a private bot message. They can link a PayPal Sandbox identity, choose an amount, approve the payment on PayPal, and return to the exact Circle. The group sees aggregate progress but never another person's contribution amount.
 
-Once the target is reached, the organiser can send the recipient a 30-day private reveal link. The reveal contains the group's messages and a clear claim state. PayPal Payouts remains fail-closed until the account receives the required scope, so the product never represents an unapproved payout as complete.
+Once the target is reached, the organiser can send the recipient a 30-day private reveal link. The reveal contains the group's messages and a choice: take the PayPal money gift or ask for the personalised product Scout recommended. Both paths create a durable preference and remain approval-gated. PayPal Payouts remains fail-closed until the account receives the required scope, so the product never represents an unapproved payout as complete.
 
 ## How we built it
 
@@ -41,6 +41,8 @@ The custom agent harness calls Amazon Bedrock through the model-agnostic Convers
 
 PayPal Orders v2 creates contribution checkouts. Log in with PayPal links a Sandbox identity. PayPal webhook signatures are verified server-side before a capture enters the Circle ledger. Amazon SES sends recipient claim invitations from the DKIM-verified `chatpye.com` domain.
 
+Channel3 powers Scout's live shopping layer. The organiser explicitly confirms permission to use a public excerpt or gift-relevant description; WanderWrap does not crawl the linked profile. The server combines those clues with the occasion and hard budget, calls Channel3 agentic search with an in-stock filter and stable Circle attribution ID, then renders product images, retailer prices and availability as interactive Mini App cards. The selected product follows the contribution link and becomes part of the recipient claim snapshot.
+
 ## Challenges
 
 The hardest challenge was preserving continuity across three security boundaries: Telegram, PayPal, and the web app. PayPal opens outside Telegram, so WanderWrap signs short-lived OAuth state, stores the pending contribution locally, and deep-links the member back into the correct Circle. A second challenge was distinguishing payment approval from verified money. The UI updates the total only after server-side capture reconciliation.
@@ -49,7 +51,7 @@ Payouts introduced a different boundary. The Sandbox app can collect contributio
 
 ## What we learned
 
-Agentic UX works best when users experience one dependable coordinator rather than a collection of chatbots. The specialist structure matters inside the harness, while the user mainly needs clear progress, timely prompts, and understandable approvals. We also learned that the emotional end of a payment flow matters: the private messages and unwrapping sequence turn a transaction into a shared act of care.
+Agentic UX works best when users experience one dependable coordinator rather than a collection of chatbots. The specialist structure matters inside the harness, while the user mainly needs clear progress, timely prompts, and understandable approvals. We also learned that product search is only useful when it preserves provenance and control: live offers must respect the budget, missing provider credentials must never become fake results, and a recommendation is not permission to purchase. The emotional end of a payment flow matters too—the private messages and cash-or-gift choice turn a transaction into a shared act of care.
 
 ## Accomplishments
 
@@ -57,12 +59,14 @@ Agentic UX works best when users experience one dependable coordinator rather th
 - Real PayPal Sandbox identity linking, Orders v2 checkout, capture, webhook verification, and DynamoDB reconciliation.
 - A custom multi-agent harness with eight named roles, durable traces, and approval-safe tool boundaries.
 - Consent-controlled recipient analysis and Bedrock-powered gift curation.
+- Channel3 agentic product search with consented clues, live images and offers, stable user attribution, and interactive selection cards.
 - DKIM-verified Amazon SES email infrastructure and a private, expiring recipient reveal.
+- A recipient-controlled cash-or-personalised-gift reveal with an explicit explanation of how Scout found the product.
 - A payout flow that fails closed until PayPal grants the required account scope.
 
 ## What's next
 
-Next we will complete the PayPal Payouts approval, process item-level payout webhooks, and run the two-account Telegram test end to end. After that, we will add queued agent jobs, richer purchase-partner handoffs, real-time Circle updates, and production SES access. Private causes will remain gated behind provider approval and trust controls. Investment collections are outside this MVP and require a regulated partner.
+Next we will add the production Channel3 key, complete the PayPal Payouts approval, process item-level payout webhooks, and run the two-account Telegram test end to end. After that, Porter will revalidate the chosen Channel3 offer and hand an approved purchase to a compatible retailer checkout. Private causes remain gated behind provider approval and trust controls. Investment collections are outside this MVP and require a regulated partner.
 
 ## Built with
 
@@ -72,21 +76,22 @@ Next we will complete the PayPal Payouts approval, process item-level payout web
 4. PayPal Payouts state machine
 5. Amazon Bedrock
 6. Amazon Nova 2 Lite
-7. Amazon SES
-8. Amazon DynamoDB
-9. AWS Lambda
-10. Amazon API Gateway
-11. Amazon ECR
-12. AWS CloudFormation
-13. Telegram Bot API
-14. Telegram Mini Apps
-15. TMA.js
-16. Next.js
-17. React
-18. TypeScript
-19. Node.js
-20. Docker
-21. GitHub Actions
+7. Channel3 Agentic Search API
+8. Amazon SES
+9. Amazon DynamoDB
+10. AWS Lambda
+11. Amazon API Gateway
+12. Amazon ECR
+13. AWS CloudFormation
+14. Telegram Bot API
+15. Telegram Mini Apps
+16. TMA.js
+17. Next.js
+18. React
+19. TypeScript
+20. Node.js
+21. Docker
+22. GitHub Actions
 
 ## Try it out links
 
@@ -116,8 +121,8 @@ Recommended additional captures:
 Keep the recording under three minutes:
 
 - 0:00-0:20 - the coordination problem and the Telegram group prompt;
-- 0:20-0:55 - Wrap creates the Circle and specialist handoffs appear;
-- 0:55-1:40 - second account joins, links a Personal Sandbox account, and contributes;
+- 0:20-0:55 - Wrap creates the Circle; Scout turns a consented clue into live Channel3 cards;
+- 0:55-1:40 - organiser chooses a product; second account joins, links a Personal Sandbox account, and contributes;
 - 1:40-2:10 - verified total and group/DM updates;
 - 2:10-2:40 - Ribbon emails the reveal and the recipient unwraps it;
 - 2:40-2:55 - architecture, safety boundary, and PayPal Payouts next step.
@@ -159,11 +164,12 @@ WanderWrap Circles integrates the PayPal developer platform in the free Sandbox 
 - **PayPal Webhooks** authenticate capture events before DynamoDB counts money toward the Circle total.
 - **PayPal Payouts** is represented by a guarded claim state machine. The current app detects that the Sandbox app lacks the Payouts scope and blocks release. Once enabled, the same state machine will reconcile batch and item webhooks before showing a completed claim.
 - **Amazon Bedrock with Amazon Nova 2 Lite** powers recipient insight and gift-curation specialists through the Converse API.
+- **Channel3 agentic search** turns consented recipient clues plus the hard Circle budget into live product cards and attributed retailer offers. It is a commerce tool used by Scout, not an autonomous purchaser.
 - **The WanderWrap agent harness** routes work across eight specialists while deterministic code enforces consent, identity, idempotency, and human approval.
 
 ### Additional sponsor tools
 
-None, used other AI tools.
+Channel3.
 
 ### Public repository
 
@@ -177,14 +183,15 @@ https://mvfjnli2kj.execute-api.eu-west-2.amazonaws.com
 
 1. In Telegram, create a group containing two test accounts and add `@WanderWrapCirclesBot`.
 2. Ask the bot to create Sarah's birthday Circle, then open the shared Mini App link.
-3. Start the Circle and approve opening the GBP 10 Sandbox collection.
-4. From the second Telegram account, open the Circle and enable private DM updates.
-5. Enter GBP 10 and choose **Link PayPal to contribute**.
-6. Sign in with a **Personal PayPal Sandbox account** from PayPal Developer Dashboard, not a normal PayPal account.
-7. Approve checkout and return to Telegram. Allow a few seconds for capture reconciliation.
-8. Confirm the Circle shows GBP 10 verified, one contributor, and no individual amount in group updates.
-9. As the organiser, send the private reveal to an email address you control.
-10. Open the email, unwrap the gift, and confirm the product clearly marks the PayPal payout as paused until Payouts scope is enabled.
+3. Start the Circle. Paste a permitted gift-relevant clue, confirm consent, and ask Scout to find live gifts with Channel3. Choose one card.
+4. Approve opening the GBP 10 Sandbox collection and share the exact Circle link.
+5. From the second Telegram account, open the Circle, confirm the same selected product is visible, and enable private DM updates.
+6. Enter GBP 10 and choose **Link PayPal to contribute**.
+7. Sign in with a **Personal PayPal Sandbox account** from PayPal Developer Dashboard, not a normal PayPal account.
+8. Approve checkout and return to Telegram. Allow a few seconds for capture reconciliation.
+9. Confirm the Circle shows GBP 10 verified, one contributor, and no individual amount in group updates.
+10. As the organiser, send the private reveal to an email address you control.
+11. Open the email, unwrap the gift, choose either the money gift or Scout's product, and confirm the app records the preference without claiming that a payout or purchase already occurred.
 
 Do not use real PayPal credentials or real money. Judges who need a Sandbox login should receive it privately; never place credentials in this public document.
 
@@ -218,7 +225,7 @@ N/A - we did not use AG Grid or AG Charts.
 
 ### AI tools used while building
 
-Amazon Bedrock, Amazon Nova 2 Lite, and OpenAI Codex.
+Amazon Bedrock, Amazon Nova 2 Lite, Channel3 agentic search, and OpenAI Codex.
 
 ### Level of learning
 

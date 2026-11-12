@@ -38,6 +38,29 @@ export interface GiftCandidate {
   kind: "physical" | "experience" | "money";
 }
 
+export interface RecipientResearch {
+  consented: true;
+  publicClues: string;
+  sourceUrl?: string;
+  query: string;
+  updatedAt: string;
+}
+
+export interface ProductRecommendation {
+  id: string;
+  title: string;
+  description: string;
+  imageUrl?: string;
+  imageAlt?: string;
+  price: number;
+  currency: string;
+  availability: string;
+  retailer: string;
+  buyUrl: string;
+  keyFeatures: string[];
+  rationale: string;
+}
+
 export interface CircleCampaign {
   id: string;
   slug: string;
@@ -54,6 +77,9 @@ export interface CircleCampaign {
   expectedContributors: number;
   chatAnalysisConsent: boolean;
   personality: string[];
+  recipientResearch?: RecipientResearch;
+  productRecommendations?: ProductRecommendation[];
+  selectedProductId?: string;
   selectedGiftId?: string;
   gifts: GiftCandidate[];
   pendingApproval?: ApprovalKind;

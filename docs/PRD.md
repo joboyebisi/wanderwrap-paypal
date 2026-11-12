@@ -149,6 +149,8 @@ Every agent action appears in the room as one of: thinking, proposal, awaiting a
 
 ### 5.5 Collect and coordinate contributions
 
+Before funding is shared, the organiser may give Scout a public post excerpt or a plain-language description of the recipient's interests. The organiser must affirm permission to use it. WanderWrap saves the supplied gift summary and optional source reference, but does not crawl private profiles or fetch arbitrary social URLs. Scout combines those clues with the Circle occasion and hard budget, then uses Channel3 agentic search to return live product cards with images, current offers, availability and retailer links. The selected product travels with the Circle link so every contributor understands what the collection may fund.
+
 For eligible Circle types, Penny prepares a PayPal checkout for each contributor. The group sees only aggregate progress unless a contributor explicitly chooses otherwise. The admin does not receive another person's PayPal credentials or funding instrument details.
 
 A contribution counts only after server-side PayPal verification. Refreshing, retrying or reopening checkout must not create duplicate credit. Refunds, reversals and disputes update the Circle ledger.
@@ -255,6 +257,24 @@ Acceptance criteria:
 - If PayPal Payouts is unavailable, the claim page may demonstrate recipient onboarding and reveal UX, but release remains disabled and visibly says that no money was sent.
 - Unclaimed and returned payouts reopen an organiser resolution task; they never silently count as delivered.
 - The claim token cannot expose the Circle ID, recipient email, amount or contributor identities.
+
+### Epic G — Consent-first live shopping and recipient choice
+
+**As an organiser, I want to turn permitted recipient clues into real products within our budget so contributors can see a credible gift direction. As a recipient, I want to choose the personalised product or the money gift.**
+
+Acceptance criteria:
+
+- The organiser must explicitly confirm permission before recipient clues are saved or sent to Channel3.
+- WanderWrap never logs into, crawls, or fetches a recipient's social profile; the optional URL is provenance only.
+- Scout sends Channel3 a Circle-scoped query containing occasion, approved clues and the hard maximum price.
+- Search uses the server-side `CHANNEL3_API_KEY`, passes a stable internal `x-user-id`, requests in-stock offers and never exposes the key to the browser.
+- Product cards show a real image when available, title, retailer, price, availability, attribution-safe buy URL and an explanation of the match.
+- Missing credentials, provider errors and empty results are visible recovery states; no dummy product is presented as live.
+- The organiser selects the direction. Selection does not place an order and is recorded in the agent trace.
+- The selected product appears beside contribution progress and is copied into the immutable recipient claim snapshot.
+- The recipient reveal offers PayPal money gift or recommended product when both are available and records the preference.
+- Choosing a product creates a Porter task; current price, stock, delivery and any shortfall must be rechecked before organiser purchase approval.
+- Choosing cash creates a Penny task; it cannot become paid without the required PayPal Payouts scope and verified item status.
 
 Launch dependencies:
 

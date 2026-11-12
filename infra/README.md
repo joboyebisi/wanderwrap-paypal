@@ -24,7 +24,9 @@ docker push ACCOUNT_ID.dkr.ecr.eu-west-2.amazonaws.com/wanderwrap-circles:latest
 
 ## 2. Store secrets
 
-Create plain-text values in AWS Secrets Manager for `PAYPAL_CLIENT_ID`, `PAYPAL_CLIENT_SECRET`, `PAYPAL_WEBHOOK_ID`, `PAYPAL_OAUTH_STATE_SECRET`, `TELEGRAM_BOT_TOKEN`, and a long random `TELEGRAM_WEBHOOK_SECRET`. Keep PayPal in sandbox mode until the end-to-end flow has been reviewed. The OAuth state secret should be at least 32 random bytes.
+Create plain-text values in AWS Secrets Manager for `PAYPAL_CLIENT_ID`, `PAYPAL_CLIENT_SECRET`, `PAYPAL_WEBHOOK_ID`, `PAYPAL_OAUTH_STATE_SECRET`, `TELEGRAM_BOT_TOKEN`, and a long random `TELEGRAM_WEBHOOK_SECRET`. Add `CHANNEL3_API_KEY` after creating a Channel3 developer account; the key stays server-side and must never use a `NEXT_PUBLIC_` prefix. Keep PayPal in sandbox mode until the end-to-end flow has been reviewed. The OAuth state secret should be at least 32 random bytes.
+
+The development template deliberately does not resolve the Channel3 key until it exists. After adding it to `wanderwrap/circles/development`, increment `CredentialsRevision` and deploy with `EnableChannel3=true`. Until then Scout returns an explicit configuration state and never fabricates product results.
 
 ## 3. Deploy App Runner
 

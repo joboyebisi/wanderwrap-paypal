@@ -27,11 +27,12 @@ The sandbox journey produces durable evidence that multiple specialists are doin
 | Handoff | Input | Agent output | Deterministic boundary |
 | --- | --- | --- | --- |
 | Wrap to Sage | recipient, occasion, consented excerpts | safe preference signals | no analysis before recorded consent |
-| Sage to Scout | bounded signals and budget | three reasoned gift directions | hard target and currency remain application state |
+| Sage to Scout | bounded signals, organiser-approved public clues and budget | Channel3 query plus live product shortlist | hard target and currency remain application state; missing key never falls back to fake products |
+| Scout to Channel3 | Circle-scoped shopping query and stable internal user ID | product images, offers, availability and attributed buy links | API key remains server-side; source URL is never fetched |
 | Scout to Rally | selected direction and member count | contribution plan and prompts | reminders never reveal who has or has not paid |
 | Rally to Penny | approved target | PayPal order and aggregate ledger | only verified captures move the total |
 | Penny to Ribbon | target reached and organiser email action | private 30-day reveal | raw token is emailed once; DynamoDB stores its SHA-256 hash |
-| Ribbon to Penny | recipient opens reveal | claim becomes opened | payout remains blocked until scope and item status are verified |
+| Ribbon to Penny or Porter | recipient chooses cash or personalised product | durable claim preference and next task | payout/purchase remains blocked until authority and final verification |
 
 Each handoff adds an `AgentTrace` with `complete`, `waiting`, or `blocked` status. The Mini App renders those traces in the Circle, which makes the agent team inspectable without exposing internal prompts.
 
@@ -48,6 +49,12 @@ Each handoff adds an `AgentTrace` with `complete`, `waiting`, or `blocked` statu
 The runtime uses Amazon Bedrock `Converse` so the harness is not coupled to one model vendor's request shape. `BEDROCK_MODEL_ID` accepts a model ID or inference profile ID; the default is the EU Amazon Nova 2 Lite profile for responsive, cost-conscious specialist calls. Evaluate a stronger reasoning profile for recipient synthesis and complex gift constraints before production.
 
 The App Runner task role receives `bedrock:InvokeModel`; static AWS keys are neither required nor supported. Model output remains advisory. Application code executes tools, checks approval state and writes durable records.
+
+## Channel3 commerce tool
+
+Scout uses Channel3's `/v1/search` endpoint in agentic mode after the organiser confirms they can use the supplied clues. The server sends a hard maximum price, in-stock filter and stable `circle_<id>` attribution value. The adapter normalises product images and retailer offers, accepts both documented price shapes, rejects non-HTTPS buy links, and chooses an eligible offer within budget. The raw API key is never returned to the Mini App.
+
+Channel3 enriches the recommendation; it does not have purchase authority. Porter must recheck the selected offer and obtain organiser approval before any future checkout handoff. The recipient's cash-or-gift choice is likewise a preference, not proof of payout or purchase.
 
 ## Approval boundaries
 

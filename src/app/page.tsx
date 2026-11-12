@@ -36,6 +36,10 @@ export default function Home() {
   const [recipientEmail, setRecipientEmail] = useState("hi@chatpye.com");
   const [giftMessage, setGiftMessage] = useState("Happy birthday, Sarah. We hope this gift makes your next adventure even brighter.");
   const [claimSent, setClaimSent] = useState(false);
+  const [researchClues, setResearchClues] = useState("");
+  const [researchSourceUrl, setResearchSourceUrl] = useState("");
+  const [researchConsent, setResearchConsent] = useState(false);
+  const [researchError, setResearchError] = useState("");
 
   const showToast = useCallback((message: string) => {
     setToast(message);
@@ -110,6 +114,7 @@ export default function Home() {
   const fullyFunded = funding.total >= target;
   const validAmount = useMemo(() => Number(amount) >= 1 && Number(amount) <= 500, [amount]);
   const selectedGift = campaign?.gifts.find((gift) => gift.id === campaign.selectedGiftId) ?? campaign?.gifts[0];
+  const selectedProduct = campaign?.productRecommendations?.find((product) => product.id === campaign.selectedProductId) ?? campaign?.productRecommendations?.[0];
 
   async function activateTestCircle() {
     setBusy(true);
@@ -255,6 +260,49 @@ export default function Home() {
     }
   }
 
+  async function researchGifts() {
+    if (!campaign || !researchClues.trim() || !researchConsent) return;
+    setBusy(true);
+    setResearchError("");
+    try {
+      const response = await fetch("/api/shopping/research", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", ...telegramAuthHeaders() },
+        body: JSON.stringify({ circleId: campaign.id, publicClues: researchClues, sourceUrl: researchSourceUrl, consent: researchConsent }),
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || "Scout could not research gifts");
+      setCampaign(result.campaign);
+      showToast(`Scout found ${result.products.length} live gift options ✨`);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Scout could not research gifts";
+      setResearchError(message);
+      showToast(message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function selectProduct(productId: string) {
+    if (!campaign) return;
+    setBusy(true);
+    try {
+      const response = await fetch("/api/shopping/select", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", ...telegramAuthHeaders() },
+        body: JSON.stringify({ circleId: campaign.id, productId }),
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || "Gift selection failed");
+      setCampaign(result.campaign);
+      showToast("Gift direction added to the Circle");
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : "Gift selection failed");
+    } finally {
+      setBusy(false);
+    }
+  }
+
   const displayed = campaign ?? TEST_CIRCLE;
 
   return <main className="app-shell">
@@ -287,10 +335,26 @@ export default function Home() {
         {showDetails && campaign && <div className="agent-team">{campaign.traces.map((trace) => <div key={trace.id} className={trace.status === "complete" ? "complete" : ""}><span>✦</span><p><b>{trace.label}</b><small>{trace.summary}</small></p><i>{trace.status === "complete" ? "✓" : "·"}</i></div>)}</div>}
       </section>
 
+      {campaign && <section className="research-card">
+        <div className="research-heading"><div className="scout-orb">🔎</div><div><span>SCOUT · LIVE GIFT RESEARCH</span><h2>Turn public clues into a delightful shortlist</h2></div><span className="channel3-pill">POWERED BY CHANNEL3</span></div>
+        <p className="research-intro">Share only gift-relevant clues you have permission to use. WanderWrap does not crawl private profiles or fetch the source URL.</p>
+        <label className="simple-field"><span>What does {campaign.recipient} enjoy?</span><textarea value={researchClues} onChange={(event) => setResearchClues(event.target.value)} maxLength={2000} placeholder="Paste a public post excerpt, or describe their interests — e.g. pottery, warm interiors, weekend hikes…"/></label>
+        <label className="simple-field"><span>Public source link · optional</span><input type="url" value={researchSourceUrl} onChange={(event) => setResearchSourceUrl(event.target.value)} placeholder="https://…"/></label>
+        <label className="research-consent"><input type="checkbox" checked={researchConsent} onChange={(event) => setResearchConsent(event.target.checked)}/><span><b>I have permission to use these clues</b><small>Only this gift-relevant summary is saved with the Circle.</small></span></label>
+        <button className="research-button" disabled={busy || !researchConsent || !researchClues.trim()} onClick={researchGifts}><span>✨</span> Find live gifts under £{campaign.targetAmount}</button>
+        {researchError && <div className="research-status"><span>🔌</span><div><b>Scout needs one connection</b><small>{researchError}</small></div></div>}
+        {campaign.productRecommendations && campaign.productRecommendations.length > 0 && <div className="product-carousel">
+          {campaign.productRecommendations.map((product) => <article key={product.id} className={product.id === campaign.selectedProductId ? "product-card selected" : "product-card"}>
+            <div className="product-image">{product.imageUrl ? <Image src={product.imageUrl} alt={product.imageAlt || product.title} width={240} height={180} unoptimized/> : <span>🎁</span>}<i>LIVE</i></div>
+            <div className="product-copy"><span>{product.availability} · {product.retailer}</span><h3>{product.title}</h3><p>{product.rationale}</p><div><strong>{product.currency === "GBP" ? "£" : `${product.currency} `}{product.price.toFixed(2)}</strong><button disabled={busy} onClick={() => void selectProduct(product.id)}>{product.id === campaign.selectedProductId ? "Chosen ✓" : "Choose"}</button></div></div>
+          </article>)}
+        </div>}
+      </section>}
+
       <article className="gift-card">
-        <div className="gift-visual"><span className="live-gift-emoji">{selectedGift?.emoji ?? "🎁"}</span></div>
-        <div className="gift-details"><div><span className="ai-pill">✨ THOUGHTFUL GIFT IDEA</span><h2>{selectedGift?.name ?? "Personalised birthday keepsake"}</h2></div><span className="price">£{selectedGift?.price ?? 7}</span></div>
-        <p className="ai-note">{selectedGift?.rationale ?? `A personal direction the group can refine for ${displayed.recipient}.`}</p>
+        <div className="gift-visual">{selectedProduct?.imageUrl ? <Image className="selected-product-image" src={selectedProduct.imageUrl} alt={selectedProduct.imageAlt || selectedProduct.title} fill sizes="(max-width: 520px) 100vw, 520px" unoptimized/> : <span className="live-gift-emoji">{selectedGift?.emoji ?? "🎁"}</span>}</div>
+        <div className="gift-details"><div><span className="ai-pill">✨ {selectedProduct ? "LIVE GIFT DIRECTION" : "THOUGHTFUL GIFT IDEA"}</span><h2>{selectedProduct?.title ?? selectedGift?.name ?? "Personalised birthday keepsake"}</h2></div><span className="price">£{selectedProduct?.price.toFixed(2) ?? selectedGift?.price ?? 7}</span></div>
+        <p className="ai-note">{selectedProduct?.rationale ?? selectedGift?.rationale ?? `A personal direction the group can refine for ${displayed.recipient}.`}</p>
       </article>
 
       <section className="funding-card">

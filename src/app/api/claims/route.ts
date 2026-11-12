@@ -33,6 +33,7 @@ export async function POST(request: Request) {
       amount: campaign.targetAmount,
       currency: "GBP",
       payoutEnabled: process.env.PAYPAL_PAYOUTS_ENABLED === "true",
+      recommendedProduct: campaign.productRecommendations?.find((product) => product.id === campaign.selectedProductId),
       messages,
       createdBy: identity.id,
     });

@@ -12,6 +12,7 @@ An agentic Telegram Mini App that helps friends remember meaningful moments, und
 ![Next.js](https://img.shields.io/badge/Next.js-16-111111?logo=nextdotjs)
 ![Amazon Bedrock](https://img.shields.io/badge/Amazon_Bedrock-Agentic_AI-ff9900?logo=amazonaws)
 ![PayPal](https://img.shields.io/badge/PayPal-Orders_%2B_Identity-003087?logo=paypal)
+![Channel3](https://img.shields.io/badge/Channel3-Live_Product_Search-204b3c)
 ![Telegram](https://img.shields.io/badge/Telegram-Mini_App-26A5E4?logo=telegram)
 ![License](https://img.shields.io/badge/license-MIT-3e9b78)
 
@@ -33,10 +34,10 @@ The AI proposes; people decide. No chat analysis, fundraising, purchase, payout 
 
 1. **Remember the moment** — Spark remembers explicitly supplied birthdays and milestones, then suggests a Circle at the right time.
 2. **Understand the recipient** — with group consent, Sage extracts only non-sensitive, gift-relevant preference signals from messages the bot receives.
-3. **Choose thoughtfully** — Scout creates three budget-aware directions while Wrap keeps the group in one simple conversation.
+3. **Choose thoughtfully** — the organiser shares consented public clues; Scout turns them into a budget-aware Channel3 search with live product images, prices, availability and retailer offers.
 4. **Fund privately** — Rally coordinates participation and Penny reconciles completed PayPal captures without exposing individual amounts.
 5. **Approve and fulfil** — Porter checks the final gift, price, timing and delivery plan, then pauses for organiser approval.
-6. **Unwrap emotionally** — Ribbon turns real contributor messages into a delightful recipient reveal for physical, experience or money gifts.
+6. **Unwrap emotionally** — Ribbon turns real contributor messages into a delightful reveal where the recipient can choose the PayPal money gift or the personalised product Scout found.
 
 The current sandbox build completes the journey through a verified contribution and an emailed, expiring recipient reveal. Money-gift payout remains visibly locked until PayPal grants the app's Payouts scope.
 
@@ -58,7 +59,7 @@ The current sandbox build completes the journey through a verified contribution 
 | **Wrap** · Conductor | Routes work and keeps one coherent group conversation | None |
 | **Spark** · Event Radar | Detects explicit upcoming milestones | Suggest only |
 | **Sage** · Recipient Insight | Extracts safe gift-relevant preferences | Consent required |
-| **Scout** · Gift Curator | Produces varied, reasoned gift directions | None |
+| **Scout** · Gift Curator | Uses consented clues and Channel3 to produce live, budget-aware product cards | None |
 | **Rally** · Circle Coordinator | Plans votes, targets and considerate reminders | None |
 | **Penny** · PayPal Treasury | Creates orders and reconciles completed captures | Approval + server verification |
 | **Porter** · Fulfilment | Prepares purchase and delivery plans | Organiser approval required |
@@ -73,12 +74,13 @@ flowchart LR
   BOT --> H[Circle Harness]
   MINI --> H
   H --> BR[Amazon Bedrock Converse]
+  H --> C3[Channel3 agentic product search]
   H --> DB[(Amazon DynamoDB)]
   H --> PP[PayPal Orders + Identity]
   PP --> WH[Verified PayPal webhooks]
   WH --> DB
   H --> SES[Amazon SES claim email]
-  SES --> R[Private recipient reveal]
+  SES --> R[Private cash-or-gift reveal]
   H --> A{Human approval}
   A --> F[Purchase / fulfilment handoff]
   F --> R
@@ -101,6 +103,7 @@ The custom harness—not the model—owns state transitions, tool execution, ide
 - Official `@tma.js` Mini App SDK with capability detection and Bot API
 - Amazon Bedrock Converse API with Amazon Nova 2 Lite by default
 - PayPal Orders v2, Identity API and verified webhooks
+- Channel3 agentic search with attributed retailer offers
 - Amazon SES with DKIM-verified sender identity
 - DynamoDB single-table persistence
 - AWS App Runner and ECR deployment
@@ -148,6 +151,8 @@ npm audit
 | `AWS_REGION` | Bedrock and DynamoDB source region; default `eu-west-2` |
 | `BEDROCK_MODEL_ID` | Bedrock model or inference profile ID |
 | `BEDROCK_GUARDRAIL_ID` / `BEDROCK_GUARDRAIL_VERSION` | Optional guardrail applied to every specialist call |
+| `CHANNEL3_API_KEY` | Server-only key for live product search and attributed retailer links |
+| `CHANNEL3_API_BASE_URL` | Channel3 API base; defaults to `https://api.trychannel3.com/v1` |
 | `DYNAMODB_TABLE` | Enables durable AWS persistence when set |
 | `SES_FROM_EMAIL` | Verified Amazon SES sender for recipient claim invitations |
 | `ALLOW_DEMO_AUTH` | Local-only Telegram authentication bypass; must be `false` in AWS |
@@ -160,6 +165,8 @@ Never commit `.env.local`, PayPal secrets, bot tokens or AWS credentials.
 - Telegram webhook updates are secret-verified, deduplicated in DynamoDB and acknowledged before agent work runs.
 - Telegram group identity is derived from signed init data rather than trusted from request JSON.
 - Chat analysis is opt-in, bounded and stoppable from the group.
+- Public-post clues require explicit organiser confirmation; the app stores only the supplied gift summary and never fetches the source URL.
+- Channel3 is called server-side with a stable Circle ID for attribution. Retail price and stock are rechecked before any approved purchase.
 - PayPal secrets and Bedrock permissions stay server-side.
 - OAuth state is signed and expires after ten minutes.
 - PayPal create requests are idempotent and captures are reconciled by order ID.
@@ -171,8 +178,9 @@ Please report vulnerabilities according to [SECURITY.md](SECURITY.md).
 
 ## Project status
 
-The product is ready for sandbox integration testing. The live development environment has Telegram, DynamoDB, Bedrock permissions, PayPal collection credentials, a DKIM-verified SES domain, and SES production sending access configured. Remaining account-level work is:
+The product is ready for sandbox integration testing. The live development environment has Telegram, DynamoDB, Bedrock permissions, PayPal collection credentials, a DKIM-verified SES domain, and SES production sending access configured. Channel3 code and UI are ready but remain visibly unconfigured until a server-side API key is added. Remaining account-level work is:
 
+- add `CHANNEL3_API_KEY` locally and to the AWS development secret, then deploy the new revision;
 - enable Payouts on the existing PayPal Sandbox Merchant app and wait for the updated OAuth scope;
 - subscribe the existing PayPal webhook to payout batch and item events;
 - record and verify the two-account Telegram end-to-end demo.

@@ -1,12 +1,14 @@
 import crypto from "node:crypto";
 import { GetCommand, PutCommand } from "@aws-sdk/lib-dynamodb";
 import { getDynamo } from "@/lib/aws/dynamo";
+import type { ProductRecommendation } from "@/lib/agents/types";
 
 export type ClaimStatus = "ready" | "emailed" | "email_failed" | "opened" | "revoked" | "paid";
 export interface GiftClaimMessage { from: string; message: string; }
 export interface GiftClaim {
   id: string; tokenHash: string; circleId: string; recipientName: string; recipientEmail: string;
   occasion: string; amount: number; currency: "GBP"; status: ClaimStatus; payoutEnabled: boolean;
+  recommendedProduct?: ProductRecommendation; recipientChoice?: "cash" | "gift";
   messages: GiftClaimMessage[]; createdBy: string; createdAt: string; updatedAt: string; expiresAt: number;
 }
 
@@ -53,4 +55,10 @@ export async function setGiftClaimStatus(claim: GiftClaim, status: ClaimStatus) 
   return updated;
 }
 
-export const publicGiftClaim = (claim: GiftClaim) => ({ id: claim.id, recipientName: claim.recipientName, occasion: claim.occasion, amount: claim.amount, currency: claim.currency, status: claim.status, payoutEnabled: claim.payoutEnabled, messages: claim.messages, expiresAt: claim.expiresAt });
+export async function setGiftClaimChoice(claim: GiftClaim, recipientChoice: "cash" | "gift") {
+  const updated = { ...claim, recipientChoice, updatedAt: new Date().toISOString() };
+  await putClaim(updated);
+  return updated;
+}
+
+export const publicGiftClaim = (claim: GiftClaim) => ({ id: claim.id, recipientName: claim.recipientName, occasion: claim.occasion, amount: claim.amount, currency: claim.currency, status: claim.status, payoutEnabled: claim.payoutEnabled, messages: claim.messages, recommendedProduct: claim.recommendedProduct, recipientChoice: claim.recipientChoice, expiresAt: claim.expiresAt });
