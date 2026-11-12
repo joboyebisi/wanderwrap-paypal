@@ -1,7 +1,16 @@
 {
   "name": "wanderwrap-circles",
   "version": "0.1.0",
+  "description": "Agentic Telegram group gifting with Amazon Bedrock and PayPal.",
   "private": true,
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/joboyebisi/wanderwrap-paypal.git"
+  },
+  "engines": {
+    "node": ">=22"
+  },
   "scripts": {
     "dev": "next dev",
     "build": "next build --webpack",
@@ -9,13 +18,12 @@
     "check": "tsc --noEmit"
   },
   "dependencies": {
-    "@openai/agents": "^0.3.7",
+    "@aws-sdk/client-bedrock-runtime": "^3.936.0",
     "@aws-sdk/client-dynamodb": "^3.936.0",
     "@aws-sdk/lib-dynamodb": "^3.936.0",
     "next": "16.4.6",
     "react": "19.2.3",
-    "react-dom": "19.2.3",
-    "zod": "^4.6.7"
+    "react-dom": "19.2.3"
   },
   "devDependencies": {
     "@types/node": "^22.10.0",

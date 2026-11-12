@@ -1,5 +1,5 @@
 import crypto from "node:crypto";
-import { askSpecialist } from "./openai-runtime";
+import { askSpecialist } from "./bedrock-runtime";
 import { campaignStore } from "./store";
 import type { AgentId, AgentTrace, CircleCampaign, HarnessInput, HarnessResult } from "./types";
 

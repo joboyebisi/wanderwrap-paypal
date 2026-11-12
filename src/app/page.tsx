@@ -32,39 +32,30 @@ export default function Home() {
   const [campaign, setCampaign] = useState<CircleCampaign | null>(null);
   const [agentMessage, setAgentMessage] = useState("I can coordinate the whole gift — with your approval at every important step.");
   const [showAgentTeam, setShowAgentTeam] = useState(false);
+  const [paypalConnected, setPaypalConnected] = useState(false);
 
   useEffect(() => {
     const webApp = window.Telegram?.WebApp;
     webApp?.ready();
     webApp?.expand();
+    webApp?.setHeaderColor("#fffaf4");
+    webApp?.setBackgroundColor("#fffaf4");
+    webApp?.setBottomBarColor("#fffaf4");
+    webApp?.enableVerticalSwipes();
     const telegramName = webApp?.initDataUnsafe?.user?.first_name;
     if (telegramName) setFirstName(telegramName);
+    const startParam = webApp?.initDataUnsafe?.start_param || new URLSearchParams(window.location.search).get("tgWebAppStartParam");
+    const paypalStatus = new URLSearchParams(window.location.search).get("paypal");
+    if (startParam === "paypal_connected" || paypalStatus === "connected") setPaypalConnected(true);
+    if (startParam?.startsWith("paid_") || paypalStatus === "success") { setContributed(true); setPaypalConnected(true); window.setTimeout(() => showToast("Contribution received — your Circle is closer! 🎉"), 400); }
   }, []);
+
+  const telegramHeaders = () => ({ "X-Telegram-Init-Data": window.Telegram?.WebApp.initData || "" });
 
   const showToast = useCallback((message: string) => {
     setToast(message);
     window.setTimeout(() => setToast(""), 2600);
   }, []);
-
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const orderId = params.get("token");
-    if (!orderId || params.get("capture") !== "1") return;
-    setBusy(true);
-    fetch("/api/paypal/capture-order", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ orderId }),
-    })
-      .then(async (response) => {
-        if (!response.ok) throw new Error((await response.json()).error);
-        setContributed(true);
-        showToast("Contribution received — thank you! 🎉");
-        window.history.replaceState({}, "", "/");
-      })
-      .catch((error) => showToast(error.message || "We could not confirm that payment"))
-      .finally(() => setBusy(false));
-  }, [showToast]);
 
   const raised = contributed ? 140 : 120;
   const supporters = contributed ? 7 : 6;
@@ -78,7 +69,7 @@ export default function Home() {
     try {
       const response = await fetch("/api/paypal/create-order", {
         method: "POST",
-        headers: { "Content-Type": "application/json", "Idempotency-Key": crypto.randomUUID(), "X-WanderWrap-Member": "telegram-demo-user" },
+        headers: { "Content-Type": "application/json", "Idempotency-Key": crypto.randomUUID(), ...telegramHeaders() },
         body: JSON.stringify({ amount, circleId: "sarah-birthday" }),
       });
       const order = await response.json();
@@ -93,7 +84,8 @@ export default function Home() {
       }
       const approval = order.links?.find((link: { rel: string; href: string }) => link.rel === "payer-action" || link.rel === "approve");
       if (!approval?.href) throw new Error("PayPal approval link was missing");
-      window.Telegram?.WebApp.openLink(approval.href) ?? window.location.assign(approval.href);
+      if (window.Telegram?.WebApp) window.Telegram.WebApp.openLink(approval.href);
+      else window.location.assign(approval.href);
     } catch (error) {
       showToast(error instanceof Error ? error.message : "Something went wrong");
     } finally {
@@ -117,7 +109,7 @@ export default function Home() {
     try {
       const response = await fetch("/api/agent/run", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", ...telegramHeaders() },
         body: JSON.stringify({
           chatId: "telegram-demo-friday-friends",
           actorId: "organiser-demo",
@@ -146,12 +138,48 @@ export default function Home() {
   async function approveFunding() {
     if (!campaign?.pendingApproval) return;
     const response = await fetch("/api/agent/approve", {
-      method: "POST", headers: { "Content-Type": "application/json" },
+      method: "POST", headers: { "Content-Type": "application/json", ...telegramHeaders() },
       body: JSON.stringify({ campaignId: campaign.id, approval: campaign.pendingApproval }),
     });
     const result = await response.json();
     if (response.ok) { setCampaign(result.campaign); setAgentMessage("Funding is open. Penny will quietly track completed PayPal captures while Rally keeps the group moving."); showToast("PayPal funding opened"); }
   }
+
+  async function connectPayPal() {
+    setBusy(true);
+    try {
+      const response = await fetch("/api/paypal/connect", { method: "POST", headers: { ...telegramHeaders() } });
+      const result = await response.json();
+      if (!response.ok) {
+        if (/not configured/i.test(result.error || "")) { setPaypalConnected(true); showToast("Demo PayPal account connected"); return; }
+        throw new Error(result.error || "Could not open PayPal");
+      }
+      if (window.Telegram?.WebApp) window.Telegram.WebApp.openLink(result.url);
+      else window.location.assign(result.url);
+    } catch (error) { showToast(error instanceof Error ? error.message : "Could not connect PayPal"); }
+    finally { setBusy(false); }
+  }
+
+  useEffect(() => {
+    const mainButton = window.Telegram?.WebApp.MainButton;
+    if (!mainButton) return;
+    const handleContribution = () => { void contribute(); };
+    if (sheet === "contribute") {
+      mainButton.setParams({ text: `CONTRIBUTE £${Number(amount || 0).toFixed(2)} WITH PAYPAL`, color: "#f36f43", text_color: "#ffffff", is_active: validAmount && !busy, is_visible: true });
+      mainButton.onClick(handleContribution);
+      if (busy) mainButton.showProgress(false); else mainButton.hideProgress();
+      mainButton.show();
+    } else mainButton.hide();
+    return () => { mainButton.offClick(handleContribution); mainButton.hideProgress(); mainButton.hide(); };
+  }, [sheet, amount, validAmount, busy]);
+
+  useEffect(() => {
+    const backButton = window.Telegram?.WebApp.BackButton;
+    if (!backButton) return;
+    const goBack = () => { if (sheet) setSheet(null); else setTab("circle"); };
+    if (sheet || tab !== "circle") { backButton.onClick(goBack); backButton.show(); } else backButton.hide();
+    return () => { backButton.offClick(goBack); };
+  }, [sheet, tab]);
 
   return (
     <main className="app-shell">
@@ -163,7 +191,10 @@ export default function Home() {
           <span className="brand-mark"><span>W</span></span>
           <span>WanderWrap</span>
         </button>
-        <button className="avatar avatar-user" aria-label={`${firstName}'s profile`}>{firstName.slice(0, 1).toUpperCase()}</button>
+        <div className="topbar-actions">
+          <button className={paypalConnected ? "paypal-status connected" : "paypal-status"} onClick={connectPayPal}><span>P</span>{paypalConnected ? "Connected" : "Link PayPal"}</button>
+          <button className="avatar avatar-user" aria-label={`${firstName}'s profile`}>{firstName.slice(0, 1).toUpperCase()}</button>
+        </div>
       </header>
 
       <section className="content">
@@ -294,6 +325,7 @@ export default function Home() {
             <button className="sheet-handle" onClick={() => setSheet(null)} aria-label="Close" />
             {sheet === "contribute" && <>
               <span className="sheet-icon">🤝</span><h2>Chip in for Sarah</h2><p>Choose your amount. Only the total is shared with the group.</p>
+              <button className={paypalConnected ? "paypal-connect-row connected" : "paypal-connect-row"} onClick={connectPayPal}><span className="paypal-mini">P</span><div><b>{paypalConnected ? "PayPal connected" : "Connect your PayPal"}</b><small>{paypalConnected ? "Ready for a faster secure checkout" : "Sign in securely on PayPal"}</small></div><i>{paypalConnected ? "✓" : "→"}</i></button>
               <label className="amount-field"><span>£</span><input value={amount} onChange={(e) => setAmount(e.target.value.replace(/[^0-9.]/g, ""))} inputMode="decimal" aria-label="Contribution amount" /></label>
               <div className="amount-pills">{[10, 20, 25, 40].map((value) => <button className={amount === String(value) ? "active" : ""} key={value} onClick={() => setAmount(String(value))}>£{value}</button>)}</div>
               <button className="paypal-button" disabled={!validAmount || busy} onClick={contribute}>{busy ? "Opening PayPal…" : <><b>Pay</b><i>Pal</i> · £{Number(amount || 0).toFixed(2)}</>}</button>

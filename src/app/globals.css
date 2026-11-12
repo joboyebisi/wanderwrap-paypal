@@ -10,6 +10,8 @@
   --orange-dark: #de5830;
   --yellow: #f7c85e;
   --green: #3e9b78;
+  --safe-top: var(--tg-content-safe-area-inset-top, env(safe-area-inset-top, 0px));
+  --safe-bottom: var(--tg-content-safe-area-inset-bottom, env(safe-area-inset-bottom, 0px));
 }
 
 * { box-sizing: border-box; }
@@ -25,12 +27,13 @@ button { color: inherit; }
 .ambient { position: absolute; pointer-events: none; border-radius: 50%; filter: blur(1px); opacity: .65; }
 .ambient-one { width: 280px; height: 280px; background: radial-gradient(circle, #ffe1cb 0, transparent 70%); top: -110px; right: -100px; }
 .ambient-two { width: 260px; height: 260px; background: radial-gradient(circle, #fff0b8 0, transparent 68%); top: 420px; left: -160px; }
-.topbar { height: 74px; padding: 15px 22px 10px; display: flex; align-items: center; justify-content: space-between; position: relative; z-index: 2; }
+.topbar { min-height: 74px; padding: calc(15px + var(--safe-top)) 22px 10px; display: flex; align-items: center; justify-content: space-between; position: relative; z-index: 2; }
 .brand { border: 0; background: transparent; padding: 0; display: flex; gap: 10px; align-items: center; font-weight: 700; font-size: 16px; cursor: pointer; }
 .brand-mark { width: 34px; height: 34px; border-radius: 11px; background: var(--orange); color: white; display: grid; place-items: center; transform: rotate(-7deg); box-shadow: 0 5px 13px #f36f4340; }
 .brand-mark span { transform: rotate(7deg); font-family: "Fraunces", serif; font-size: 20px; }
 .avatar { width: 34px; height: 34px; border: 2px solid #fff; border-radius: 50%; display: grid; place-items: center; color: white; font-size: 10px; font-weight: 700; background: #b68e72; box-shadow: 0 2px 6px #372d2425; }
 .avatar-user { border: 2px solid white; background: linear-gradient(135deg, #816aee, #e28cba); font-size: 14px; cursor: pointer; }
+.topbar-actions{display:flex;align-items:center;gap:9px}.paypal-status{height:34px;border:1px solid #ded8cf;border-radius:12px;background:#fff;padding:0 10px 0 6px;display:flex;align-items:center;gap:6px;font-size:9px;font-weight:700;color:#5f5a54;cursor:pointer;box-shadow:0 4px 11px #4b3a2710}.paypal-status>span,.paypal-mini{width:22px;height:22px;border-radius:8px;background:linear-gradient(145deg,#0d80d8,#153777);color:#fff;display:grid;place-items:center;font-style:italic;font-weight:800}.paypal-status.connected{background:#f1faf5;border-color:#cde7d8;color:#237455}.paypal-status.connected>span{background:#31a16f}
 .content { position: relative; z-index: 1; padding: 8px 18px 24px; }
 .eyebrow-row { display: flex; align-items: center; justify-content: space-between; }
 .eyebrow { color: #6a665f; font-size: 10px; letter-spacing: .15em; font-weight: 700; display: inline-flex; gap: 7px; align-items: center; }
@@ -120,12 +123,13 @@ h1 em { color: var(--orange); font-weight: 600; }
 .amount-field { height: 82px; border: 1px solid var(--line); border-radius: 18px; background:#fff; display:flex; justify-content:center; align-items:center; margin-bottom:12px }.amount-field span{font-size:25px;color:#8b8178}.amount-field input{width:110px;border:0;outline:0;font-weight:700;font-size:38px;background:transparent;color:var(--ink)}
 .amount-pills{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:16px}.amount-pills button{border:1px solid var(--line);background:#fff;border-radius:11px;padding:9px 2px;font-size:12px;cursor:pointer}.amount-pills button.active{border-color:var(--orange);color:var(--orange);background:#fff4ee;font-weight:700}
 .paypal-button{background:#ffc439;color:#172c70;margin-top:1px}.paypal-button b{color:#133276;font-style:italic;font-size:17px}.paypal-button i{color:#0878cf;font-weight:700;font-size:17px}.paypal-button:disabled{opacity:.5;cursor:not-allowed}.secure-note{display:block;color:#8b847d;font-size:9px;margin-top:11px}
+.paypal-connect-row{width:100%;border:1px solid var(--line);background:#fff;border-radius:14px;padding:10px 11px;margin:0 0 12px;display:grid;grid-template-columns:34px 1fr 22px;align-items:center;gap:9px;text-align:left;cursor:pointer}.paypal-connect-row .paypal-mini{width:34px;height:34px;border-radius:11px}.paypal-connect-row>div{display:flex;flex-direction:column;gap:2px}.paypal-connect-row b{font-size:11px}.paypal-connect-row small{font-size:8px;color:var(--muted)}.paypal-connect-row i{font-style:normal;color:#277bc0}.paypal-connect-row.connected{background:#f1faf5;border-color:#cde7d8}.paypal-connect-row.connected i{color:#28805c;font-weight:700}
 .simple-field{text-align:left;display:block;margin:11px 0}.simple-field span{display:block;font-size:10px;color:var(--muted);font-weight:700;margin:0 0 6px 3px;text-transform:uppercase;letter-spacing:.08em}.simple-field input,.simple-field select{width:100%;height:50px;border:1px solid var(--line);border-radius:13px;padding:0 13px;background:#fff;outline:0}.simple-field:last-of-type{margin-bottom:17px}
 .toast { position: fixed; z-index: 100; left: 50%; bottom: 96px; transform: translateX(-50%); width: max-content; max-width: calc(100% - 40px); background: var(--ink); color: white; padding: 12px 17px; border-radius: 13px; font-size: 11px; box-shadow: 0 10px 30px #0003; animation: pop .25s ease; }
 .busy-bar { position: fixed; z-index: 101; height: 3px; top: 0; left: 0; background: var(--orange); animation: loading 1.2s infinite; }
 @keyframes fade { from{opacity:0}to{opacity:1} } @keyframes slide{from{transform:translateY(100%)}to{transform:translateY(0)}} @keyframes pop{from{opacity:0;transform:translate(-50%,10px)}to{opacity:1;transform:translate(-50%,0)}} @keyframes loading{0%{width:0;left:0}60%{width:70%;left:20%}100%{width:0;left:100%}}
 @media (min-width: 521px) { .app-shell { margin-top: 24px; margin-bottom: 24px; min-height: calc(100dvh - 48px); border-radius: 28px; }.bottom-nav{bottom:24px;border-radius:0 0 28px 28px}.sheet{border-radius:28px;margin-bottom:20px}.sheet-backdrop{align-items:flex-end} }
-@media (max-width: 360px) { .content{padding-inline:13px}.gift-visual{height:165px}.camera{transform:scale(.87) rotate(-5deg)}.tiny-note{display:none}.gift-details h2{font-size:18px}.bottom-nav{padding-inline:7px} }
+@media (max-width: 360px) { .content{padding-inline:13px}.gift-visual{height:165px}.camera{transform:scale(.87) rotate(-5deg)}.tiny-note{display:none}.gift-details h2{font-size:18px}.bottom-nav{padding-inline:7px}.paypal-status{font-size:0;padding-right:6px} }
 @media (prefers-reduced-motion: reduce) { *,*::before,*::after{animation-duration:.01ms!important;transition-duration:.01ms!important} }
 
 /* Recipient reveal */

@@ -5,7 +5,8 @@ export function validateTelegramInitData(initData: string, botToken: string, max
   const params = new URLSearchParams(initData);
   const hash = params.get("hash");
   const authDate = Number(params.get("auth_date"));
-  if (!hash || !authDate || Date.now() / 1000 - authDate > maxAgeSeconds) return false;
+  const age = Date.now() / 1000 - authDate;
+  if (!hash || !authDate || age > maxAgeSeconds || age < -30 || !/^[a-f0-9]{64}$/i.test(hash)) return false;
 
   params.delete("hash");
   const dataCheckString = [...params.entries()]
@@ -14,5 +15,7 @@ export function validateTelegramInitData(initData: string, botToken: string, max
     .join("\n");
   const secretKey = crypto.createHmac("sha256", "WebAppData").update(botToken).digest();
   const expected = crypto.createHmac("sha256", secretKey).update(dataCheckString).digest("hex");
-  return crypto.timingSafeEqual(Buffer.from(expected, "hex"), Buffer.from(hash, "hex"));
+  const expectedBuffer = Buffer.from(expected, "hex");
+  const suppliedBuffer = Buffer.from(hash, "hex");
+  return expectedBuffer.length === suppliedBuffer.length && crypto.timingSafeEqual(expectedBuffer, suppliedBuffer);
 }

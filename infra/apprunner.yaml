@@ -18,7 +18,9 @@ Parameters:
     Type: String
   PayPalWebhookIdSecretArn:
     Type: String
-  OpenAIApiKeySecretArn:
+  PayPalOAuthStateSecretArn:
+    Type: String
+  TelegramBotUsername:
     Type: String
 
 Resources:
@@ -65,7 +67,12 @@ Resources:
                   - !Ref TelegramBotTokenSecretArn
                   - !Ref TelegramWebhookSecretArn
                   - !Ref PayPalWebhookIdSecretArn
-                  - !Ref OpenAIApiKeySecretArn
+                  - !Ref PayPalOAuthStateSecretArn
+              - Effect: Allow
+                Action:
+                  - bedrock:InvokeModel
+                  - bedrock:InvokeModelWithResponseStream
+                Resource: '*'
 
   CirclesTable:
     Type: AWS::DynamoDB::Table
@@ -118,6 +125,14 @@ Resources:
                 Value: sandbox
               - Name: DYNAMODB_TABLE
                 Value: !Ref CirclesTable
+              - Name: AWS_REGION
+                Value: eu-west-2
+              - Name: BEDROCK_MODEL_ID
+                Value: eu.amazon.nova-2-lite-v1:0
+              - Name: ALLOW_DEMO_AUTH
+                Value: 'false'
+              - Name: TELEGRAM_BOT_USERNAME
+                Value: !Ref TelegramBotUsername
             RuntimeEnvironmentSecrets:
               - Name: PAYPAL_CLIENT_ID
                 Value: !Ref PayPalClientIdSecretArn
@@ -129,8 +144,8 @@ Resources:
                 Value: !Ref TelegramWebhookSecretArn
               - Name: PAYPAL_WEBHOOK_ID
                 Value: !Ref PayPalWebhookIdSecretArn
-              - Name: OPENAI_API_KEY
-                Value: !Ref OpenAIApiKeySecretArn
+              - Name: PAYPAL_OAUTH_STATE_SECRET
+                Value: !Ref PayPalOAuthStateSecretArn
 
 Outputs:
   ServiceUrl:

@@ -1,9 +1,12 @@
 import { NextResponse } from "next/server";
 import { createPayPalOrder } from "@/lib/paypal";
 import { registerPayPalOrder } from "@/lib/paypal-ledger";
+import { authenticateTelegramRequest } from "@/lib/telegram-auth";
 
 export async function POST(request: Request) {
   try {
+    const identity = authenticateTelegramRequest(request);
+    if (!identity) return NextResponse.json({ error: "Telegram authentication required" }, { status: 401 });
     const { amount, circleId = "sarah-birthday" } = await request.json();
     const numericAmount = Number(amount);
     if (!Number.isFinite(numericAmount) || numericAmount < 1 || numericAmount > 500) {
@@ -11,7 +14,7 @@ export async function POST(request: Request) {
     }
     const requestId = request.headers.get("idempotency-key") || undefined;
     const order = await createPayPalOrder(numericAmount.toFixed(2), circleId, requestId);
-    await registerPayPalOrder(order.id, circleId, numericAmount, request.headers.get("x-wanderwrap-member") || undefined);
+    await registerPayPalOrder(order.id, circleId, numericAmount, identity.id);
     return NextResponse.json(order);
   } catch (error) {
     return NextResponse.json({ error: error instanceof Error ? error.message : "Could not create order" }, { status: 500 });

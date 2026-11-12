@@ -45,11 +45,38 @@ export async function createPayPalOrder(amount: string, circleId: string, reques
       payment_source: { paypal: { experience_context: {
         user_action: "PAY_NOW",
         shipping_preference: "NO_SHIPPING",
-        return_url: `${appUrl}/?capture=1`,
-        cancel_url: `${appUrl}/?cancelled=1`,
+        return_url: `${appUrl}/api/paypal/return?circle=${encodeURIComponent(circleId)}`,
+        cancel_url: `${appUrl}/api/paypal/return?circle=${encodeURIComponent(circleId)}&cancelled=1`,
       } } },
     }),
   });
+}
+
+export function createPayPalLoginUrl(state: string) {
+  const clientId = process.env.PAYPAL_CLIENT_ID;
+  if (!clientId) throw new Error("PayPal is not configured");
+  const appUrl = (process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000").replace(/\/$/, "");
+  const loginBase = process.env.PAYPAL_ENV === "live" ? "https://www.paypal.com" : "https://www.sandbox.paypal.com";
+  const query = new URLSearchParams({ flowEntry: "static", client_id: clientId, response_type: "code", scope: "openid profile email", redirect_uri: `${appUrl}/api/paypal/oauth/callback`, state });
+  return `${loginBase}/connect?${query}`;
+}
+
+export async function exchangePayPalLoginCode(code: string) {
+  const clientId = process.env.PAYPAL_CLIENT_ID;
+  const clientSecret = process.env.PAYPAL_CLIENT_SECRET;
+  if (!clientId || !clientSecret) throw new Error("PayPal is not configured");
+  const appUrl = (process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000").replace(/\/$/, "");
+  const auth = Buffer.from(`${clientId}:${clientSecret}`).toString("base64");
+  const tokenResponse = await fetch(`${paypalBase}/v1/oauth2/token`, {
+    method: "POST", headers: { Authorization: `Basic ${auth}`, "Content-Type": "application/x-www-form-urlencoded" },
+    body: new URLSearchParams({ grant_type: "authorization_code", code, redirect_uri: `${appUrl}/api/paypal/oauth/callback` }), cache: "no-store",
+  });
+  const token = await tokenResponse.json();
+  if (!tokenResponse.ok) throw new Error(token.error_description || "PayPal login could not be completed");
+  const profileResponse = await fetch(`${paypalBase}/v1/identity/oauth2/userinfo?schema=paypalv1.1`, { headers: { Authorization: `Bearer ${token.access_token}` }, cache: "no-store" });
+  const profile = await profileResponse.json();
+  if (!profileResponse.ok) throw new Error("PayPal profile could not be read");
+  return profile as { user_id: string; name?: string; email?: string; verified_account?: boolean };
 }
 
 export async function capturePayPalOrder(orderId: string) {

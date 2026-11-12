@@ -16,11 +16,11 @@ docker push ACCOUNT_ID.dkr.ecr.eu-west-2.amazonaws.com/wanderwrap-circles:latest
 
 ## 2. Store secrets
 
-Create four plain-text values in AWS Secrets Manager: `PAYPAL_CLIENT_ID`, `PAYPAL_CLIENT_SECRET`, `TELEGRAM_BOT_TOKEN`, and a long random `TELEGRAM_WEBHOOK_SECRET`. Keep PayPal in sandbox mode until the end-to-end flow has been reviewed.
+Create plain-text values in AWS Secrets Manager for `PAYPAL_CLIENT_ID`, `PAYPAL_CLIENT_SECRET`, `PAYPAL_WEBHOOK_ID`, `PAYPAL_OAUTH_STATE_SECRET`, `TELEGRAM_BOT_TOKEN`, and a long random `TELEGRAM_WEBHOOK_SECRET`. Keep PayPal in sandbox mode until the end-to-end flow has been reviewed. The OAuth state secret should be at least 32 random bytes.
 
 ## 3. Deploy App Runner
 
-Deploy `infra/apprunner.yaml`, passing the ECR image URI, public app URL, and the four secret ARNs. Add `secretsmanager:GetSecretValue` to `AppInstanceRole` for those four ARNs if your account does not automatically create the required resource policy.
+Deploy `infra/apprunner.yaml`, passing the ECR image URI, public app URL, Telegram bot username, and secret ARNs. The template grants the App Runner instance role scoped read access to those secrets and permission to invoke Amazon Bedrock.
 
 ## 4. Connect Telegram
 

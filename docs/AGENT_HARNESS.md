@@ -18,7 +18,7 @@ Circle Conductor (Wrap)
       └── Reveal Director (Ribbon) ─ messages and unwrapping
 ```
 
-The custom harness in `src/lib/agents/harness.ts` owns campaign state, specialist sequencing, traces, and approval boundaries. OpenAI agents are deliberately advisory. Deterministic application code owns payments, persistence, permissions, and state transitions.
+The custom harness in `src/lib/agents/harness.ts` owns campaign state, specialist sequencing, traces, and approval boundaries. Amazon Bedrock specialists are deliberately advisory. Deterministic application code owns payments, persistence, permissions, and state transitions.
 
 ## Why this split
 
@@ -26,7 +26,13 @@ The custom harness in `src/lib/agents/harness.ts` owns campaign state, specialis
 - Recipient analysis and gift selection have different safety and evaluation criteria.
 - Treasury and fulfilment use narrower tools and stricter approval gates.
 - The reveal agent may be creative, but it cannot invent contributor messages.
-- A missing OpenAI key falls back to deterministic demo specialists without breaking the product tour.
+- Missing Bedrock access falls back to deterministic demo specialists without breaking the product tour.
+
+## Bedrock provider strategy
+
+The runtime uses Amazon Bedrock `Converse` so the harness is not coupled to one model vendor's request shape. `BEDROCK_MODEL_ID` accepts a model ID or inference profile ID; the default is the EU Amazon Nova 2 Lite profile for responsive, cost-conscious specialist calls. Evaluate a stronger reasoning profile for recipient synthesis and complex gift constraints before production.
+
+The App Runner task role receives `bedrock:InvokeModel`; static AWS keys are neither required nor supported. Model output remains advisory. Application code executes tools, checks approval state and writes durable records.
 
 ## Approval boundaries
 
