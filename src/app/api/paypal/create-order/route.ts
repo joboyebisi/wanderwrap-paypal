@@ -5,7 +5,7 @@ import { authenticateTelegramRequest } from "@/lib/telegram-auth";
 
 export async function POST(request: Request) {
   try {
-    const identity = authenticateTelegramRequest(request);
+    const identity = await authenticateTelegramRequest(request);
     if (!identity) return NextResponse.json({ error: "Telegram authentication required" }, { status: 401 });
     const { amount, circleId = "sarah-birthday" } = await request.json();
     const numericAmount = Number(amount);

@@ -22,6 +22,19 @@ Parameters:
     Type: String
   TelegramBotUsername:
     Type: String
+  EnvironmentType:
+    Type: String
+    Default: sandbox
+    AllowedValues: [sandbox, production]
+  BedrockGuardrailId:
+    Type: String
+    Default: ''
+  BedrockGuardrailVersion:
+    Type: String
+    Default: ''
+
+Conditions:
+  IsProduction: !Equals [!Ref EnvironmentType, production]
 
 Resources:
   EcrAccessRole:
@@ -72,13 +85,29 @@ Resources:
                 Action:
                   - bedrock:InvokeModel
                   - bedrock:InvokeModelWithResponseStream
+                  - bedrock:ApplyGuardrail
+                Resource: '*'
+              - Effect: Allow
+                Action:
+                  - xray:PutTraceSegments
+                  - xray:PutTelemetryRecords
                 Resource: '*'
 
   CirclesTable:
     Type: AWS::DynamoDB::Table
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
     Properties:
-      TableName: wanderwrap-circles
+      TableName: !Sub 'wanderwrap-circles-${EnvironmentType}'
       BillingMode: PAY_PER_REQUEST
+      DeletionProtectionEnabled: !If [IsProduction, true, false]
+      PointInTimeRecoverySpecification:
+        PointInTimeRecoveryEnabled: true
+      SSESpecification:
+        SSEEnabled: true
+      TimeToLiveSpecification:
+        AttributeName: expiresAt
+        Enabled: true
       AttributeDefinitions:
         - { AttributeName: pk, AttributeType: S }
         - { AttributeName: sk, AttributeType: S }
@@ -93,11 +122,37 @@ Resources:
             - { AttributeName: gsi1pk, KeyType: HASH }
             - { AttributeName: gsi1sk, KeyType: RANGE }
           Projection: { ProjectionType: ALL }
+      Tags:
+        - { Key: Application, Value: WanderWrap }
+        - { Key: Environment, Value: !Ref EnvironmentType }
+
+  ServiceAutoScaling:
+    Type: AWS::AppRunner::AutoScalingConfiguration
+    Properties:
+      AutoScalingConfigurationName: !Sub 'wanderwrap-${EnvironmentType}'
+      MaxConcurrency: 80
+      MinSize: 1
+      MaxSize: 10
+      Tags:
+        - { Key: Application, Value: WanderWrap }
+
+  ServiceObservability:
+    Type: AWS::AppRunner::ObservabilityConfiguration
+    Properties:
+      ObservabilityConfigurationName: !Sub 'wanderwrap-${EnvironmentType}'
+      TraceConfiguration:
+        Vendor: AWSXRAY
+      Tags:
+        - { Key: Application, Value: WanderWrap }
 
   CirclesService:
     Type: AWS::AppRunner::Service
     Properties:
-      ServiceName: wanderwrap-circles
+      ServiceName: !Sub 'wanderwrap-circles-${EnvironmentType}'
+      AutoScalingConfigurationArn: !GetAtt ServiceAutoScaling.AutoScalingConfigurationArn
+      ObservabilityConfiguration:
+        ObservabilityEnabled: true
+        ObservabilityConfigurationArn: !GetAtt ServiceObservability.ObservabilityConfigurationArn
       InstanceConfiguration:
         Cpu: 1 vCPU
         Memory: 2 GB
@@ -122,7 +177,7 @@ Resources:
               - Name: NEXT_PUBLIC_APP_URL
                 Value: !Ref AppUrl
               - Name: PAYPAL_ENV
-                Value: sandbox
+                Value: !If [IsProduction, live, sandbox]
               - Name: DYNAMODB_TABLE
                 Value: !Ref CirclesTable
               - Name: AWS_REGION
@@ -133,6 +188,10 @@ Resources:
                 Value: 'false'
               - Name: TELEGRAM_BOT_USERNAME
                 Value: !Ref TelegramBotUsername
+              - Name: BEDROCK_GUARDRAIL_ID
+                Value: !Ref BedrockGuardrailId
+              - Name: BEDROCK_GUARDRAIL_VERSION
+                Value: !Ref BedrockGuardrailVersion
             RuntimeEnvironmentSecrets:
               - Name: PAYPAL_CLIENT_ID
                 Value: !Ref PayPalClientIdSecretArn
@@ -152,3 +211,5 @@ Outputs:
     Value: !GetAtt CirclesService.ServiceUrl
   ServiceArn:
     Value: !GetAtt CirclesService.ServiceArn
+  TableName:
+    Value: !Ref CirclesTable

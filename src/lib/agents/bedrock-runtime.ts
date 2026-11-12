@@ -9,11 +9,16 @@ export async function askSpecialist(id: AgentId, input: string) {
   if (!modelId) return null;
   client ??= new BedrockRuntimeClient({ region: process.env.AWS_REGION || "eu-west-2" });
   try {
+    const guardrailIdentifier = process.env.BEDROCK_GUARDRAIL_ID;
+    const guardrailVersion = process.env.BEDROCK_GUARDRAIL_VERSION;
     const response = await client.send(new ConverseCommand({
       modelId,
       system: [{ text: agentPrompts[id] }],
       messages: [{ role: "user", content: [{ text: input }] }],
       inferenceConfig: { maxTokens: 700, temperature: 0.25, topP: 0.9 },
+      ...(guardrailIdentifier && guardrailVersion ? {
+        guardrailConfig: { guardrailIdentifier, guardrailVersion, trace: "enabled" as const },
+      } : {}),
     }));
     return response.output?.message?.content?.map((part) => "text" in part ? part.text : "").join("").trim() || null;
   } catch (error) {

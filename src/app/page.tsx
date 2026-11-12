@@ -2,6 +2,16 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { CircleCampaign } from "@/lib/agents/types";
+import {
+  backButton,
+  closingBehavior,
+  initializeTelegram,
+  mainButton,
+  openExternalLink,
+  shareTelegramURL,
+  telegramAuthHeaders,
+  telegramImpact,
+} from "@/lib/telegram-client";
 
 type Tab = "circle" | "ideas" | "moments";
 
@@ -33,24 +43,23 @@ export default function Home() {
   const [agentMessage, setAgentMessage] = useState("I can coordinate the whole gift — with your approval at every important step.");
   const [showAgentTeam, setShowAgentTeam] = useState(false);
   const [paypalConnected, setPaypalConnected] = useState(false);
+  const [telegramReady, setTelegramReady] = useState(false);
 
   useEffect(() => {
-    const webApp = window.Telegram?.WebApp;
-    webApp?.ready();
-    webApp?.expand();
-    webApp?.setHeaderColor("#fffaf4");
-    webApp?.setBackgroundColor("#fffaf4");
-    webApp?.setBottomBarColor("#fffaf4");
-    webApp?.enableVerticalSwipes();
-    const telegramName = webApp?.initDataUnsafe?.user?.first_name;
-    if (telegramName) setFirstName(telegramName);
-    const startParam = webApp?.initDataUnsafe?.start_param || new URLSearchParams(window.location.search).get("tgWebAppStartParam");
-    const paypalStatus = new URLSearchParams(window.location.search).get("paypal");
-    if (startParam === "paypal_connected" || paypalStatus === "connected") setPaypalConnected(true);
-    if (startParam?.startsWith("paid_") || paypalStatus === "success") { setContributed(true); setPaypalConnected(true); window.setTimeout(() => showToast("Contribution received — your Circle is closer! 🎉"), 400); }
+    void initializeTelegram().then(({ available, firstName: telegramName, startParam: telegramStartParam }) => {
+      setTelegramReady(available);
+      if (telegramName) setFirstName(telegramName);
+      const params = new URLSearchParams(window.location.search);
+      const startParam = telegramStartParam || params.get("tgWebAppStartParam");
+      const paypalStatus = params.get("paypal");
+      if (startParam === "paypal_connected" || paypalStatus === "connected") setPaypalConnected(true);
+      if (startParam?.startsWith("paid_") || paypalStatus === "success") {
+        setContributed(true);
+        setPaypalConnected(true);
+        window.setTimeout(() => showToast("Contribution received — your Circle is closer! 🎉"), 400);
+      }
+    });
   }, []);
-
-  const telegramHeaders = () => ({ "X-Telegram-Init-Data": window.Telegram?.WebApp.initData || "" });
 
   const showToast = useCallback((message: string) => {
     setToast(message);
@@ -64,12 +73,12 @@ export default function Home() {
 
   async function contribute() {
     if (!validAmount) return;
-    window.Telegram?.WebApp.HapticFeedback?.impactOccurred("medium");
+    telegramImpact();
     setBusy(true);
     try {
       const response = await fetch("/api/paypal/create-order", {
         method: "POST",
-        headers: { "Content-Type": "application/json", "Idempotency-Key": crypto.randomUUID(), ...telegramHeaders() },
+        headers: { "Content-Type": "application/json", "Idempotency-Key": crypto.randomUUID(), ...telegramAuthHeaders() },
         body: JSON.stringify({ amount, circleId: "sarah-birthday" }),
       });
       const order = await response.json();
@@ -84,8 +93,7 @@ export default function Home() {
       }
       const approval = order.links?.find((link: { rel: string; href: string }) => link.rel === "payer-action" || link.rel === "approve");
       if (!approval?.href) throw new Error("PayPal approval link was missing");
-      if (window.Telegram?.WebApp) window.Telegram.WebApp.openLink(approval.href);
-      else window.location.assign(approval.href);
+      openExternalLink(approval.href);
     } catch (error) {
       showToast(error instanceof Error ? error.message : "Something went wrong");
     } finally {
@@ -95,7 +103,9 @@ export default function Home() {
 
   async function shareCircle() {
     const shareText = "Join our WanderWrap Circle for Sarah’s birthday 🎁";
-    if (navigator.share) {
+    if (shareTelegramURL(window.location.href, shareText)) {
+      setSheet(null);
+    } else if (navigator.share) {
       await navigator.share({ title: "Sarah’s birthday Circle", text: shareText, url: window.location.href });
     } else {
       await navigator.clipboard.writeText(window.location.href);
@@ -109,7 +119,7 @@ export default function Home() {
     try {
       const response = await fetch("/api/agent/run", {
         method: "POST",
-        headers: { "Content-Type": "application/json", ...telegramHeaders() },
+        headers: { "Content-Type": "application/json", ...telegramAuthHeaders() },
         body: JSON.stringify({
           chatId: "telegram-demo-friday-friends",
           actorId: "organiser-demo",
@@ -138,7 +148,7 @@ export default function Home() {
   async function approveFunding() {
     if (!campaign?.pendingApproval) return;
     const response = await fetch("/api/agent/approve", {
-      method: "POST", headers: { "Content-Type": "application/json", ...telegramHeaders() },
+      method: "POST", headers: { "Content-Type": "application/json", ...telegramAuthHeaders() },
       body: JSON.stringify({ campaignId: campaign.id, approval: campaign.pendingApproval }),
     });
     const result = await response.json();
@@ -148,38 +158,45 @@ export default function Home() {
   async function connectPayPal() {
     setBusy(true);
     try {
-      const response = await fetch("/api/paypal/connect", { method: "POST", headers: { ...telegramHeaders() } });
+      const response = await fetch("/api/paypal/connect", { method: "POST", headers: { ...telegramAuthHeaders() } });
       const result = await response.json();
       if (!response.ok) {
         if (/not configured/i.test(result.error || "")) { setPaypalConnected(true); showToast("Demo PayPal account connected"); return; }
         throw new Error(result.error || "Could not open PayPal");
       }
-      if (window.Telegram?.WebApp) window.Telegram.WebApp.openLink(result.url);
-      else window.location.assign(result.url);
+      openExternalLink(result.url);
     } catch (error) { showToast(error instanceof Error ? error.message : "Could not connect PayPal"); }
     finally { setBusy(false); }
   }
 
   useEffect(() => {
-    const mainButton = window.Telegram?.WebApp.MainButton;
-    if (!mainButton) return;
+    if (!mainButton.isSupported() || !mainButton.isMounted()) return;
     const handleContribution = () => { void contribute(); };
     if (sheet === "contribute") {
-      mainButton.setParams({ text: `CONTRIBUTE £${Number(amount || 0).toFixed(2)} WITH PAYPAL`, color: "#f36f43", text_color: "#ffffff", is_active: validAmount && !busy, is_visible: true });
-      mainButton.onClick(handleContribution);
-      if (busy) mainButton.showProgress(false); else mainButton.hideProgress();
-      mainButton.show();
+      mainButton.setParams({ text: `CONTRIBUTE £${Number(amount || 0).toFixed(2)} WITH PAYPAL`, bgColor: "#f36f43", textColor: "#ffffff", isEnabled: validAmount && !busy, isVisible: true });
+      const offClick = mainButton.onClick(handleContribution);
+      if (busy) mainButton.showLoader(); else mainButton.hideLoader();
+      return () => { offClick(); mainButton.hideLoader(); mainButton.hide(); };
     } else mainButton.hide();
-    return () => { mainButton.offClick(handleContribution); mainButton.hideProgress(); mainButton.hide(); };
-  }, [sheet, amount, validAmount, busy]);
+  }, [sheet, amount, validAmount, busy, telegramReady]);
 
   useEffect(() => {
-    const backButton = window.Telegram?.WebApp.BackButton;
-    if (!backButton) return;
+    if (!backButton.isSupported() || !backButton.isMounted()) return;
     const goBack = () => { if (sheet) setSheet(null); else setTab("circle"); };
-    if (sheet || tab !== "circle") { backButton.onClick(goBack); backButton.show(); } else backButton.hide();
-    return () => { backButton.offClick(goBack); };
-  }, [sheet, tab]);
+    if (sheet || tab !== "circle") {
+      const offClick = backButton.onClick(goBack);
+      backButton.show();
+      return () => { offClick(); backButton.hide(); };
+    }
+    backButton.hide();
+  }, [sheet, tab, telegramReady]);
+
+  useEffect(() => {
+    if (!closingBehavior.isSupported() || !closingBehavior.isMounted()) return;
+    if (sheet === "contribute" || busy) closingBehavior.enableConfirmation();
+    else closingBehavior.disableConfirmation();
+    return () => closingBehavior.disableConfirmation();
+  }, [sheet, busy, telegramReady]);
 
   return (
     <main className="app-shell">

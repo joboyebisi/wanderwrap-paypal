@@ -13,7 +13,7 @@ An agentic Telegram Mini App that helps friends remember meaningful moments, und
 ![Telegram](https://img.shields.io/badge/Telegram-Mini_App-26A5E4?logo=telegram)
 ![License](https://img.shields.io/badge/license-MIT-3e9b78)
 
-[Product tour](#the-experience) · [Architecture](#architecture) · [Local setup](#local-development) · [AWS deployment](infra/README.md) · [Agent harness](docs/AGENT_HARNESS.md)
+[Product tour](#the-experience) · [Architecture](#architecture) · [Local setup](#local-development) · [AWS deployment](infra/README.md) · [Agent harness](docs/AGENT_HARNESS.md) · [Reference decisions](docs/REFERENCE_ARCHITECTURE.md)
 
 </div>
 
@@ -89,7 +89,7 @@ The custom harness—not the model—owns state transitions, tool execution, ide
 ## Technology
 
 - Next.js 16, React 19 and TypeScript
-- Telegram Main/Direct Mini App SDK and Bot API
+- Official `@tma.js` Mini App SDK with capability detection and Bot API
 - Amazon Bedrock Converse API with Amazon Nova 2 Lite by default
 - PayPal Orders v2, Identity API and verified webhooks
 - DynamoDB single-table persistence
@@ -136,6 +136,7 @@ npm audit
 | `PAYPAL_ENV` | `sandbox` or `live` |
 | `AWS_REGION` | Bedrock and DynamoDB source region; default `eu-west-2` |
 | `BEDROCK_MODEL_ID` | Bedrock model or inference profile ID |
+| `BEDROCK_GUARDRAIL_ID` / `BEDROCK_GUARDRAIL_VERSION` | Optional guardrail applied to every specialist call |
 | `DYNAMODB_TABLE` | Enables durable AWS persistence when set |
 | `ALLOW_DEMO_AUTH` | Local-only Telegram authentication bypass; must be `false` in AWS |
 
@@ -143,13 +144,16 @@ Never commit `.env.local`, PayPal secrets, bot tokens or AWS credentials.
 
 ## Security and privacy
 
-- Telegram `initData` is validated server-side for protected Mini App APIs.
+- Telegram `initData` is validated server-side with the official Web Crypto validator and a one-hour lifetime.
+- Telegram webhook updates are secret-verified, deduplicated in DynamoDB and acknowledged before agent work runs.
+- Telegram group identity is derived from signed init data rather than trusted from request JSON.
 - Chat analysis is opt-in, bounded and stoppable from the group.
 - PayPal secrets and Bedrock permissions stay server-side.
 - OAuth state is signed and expires after ten minutes.
 - PayPal create requests are idempotent and captures are reconciled by order ID.
 - Side-effecting agent actions fail closed without the exact pending approval.
 - App Runner uses an IAM role; production does not require static AWS access keys.
+- DynamoDB uses encryption, point-in-time recovery, TTL cleanup and production deletion protection.
 
 Please report vulnerabilities according to [SECURITY.md](SECURITY.md).
 

@@ -4,7 +4,7 @@ import { authenticateTelegramRequest } from "@/lib/telegram-auth";
 import { createPayPalLoginUrl } from "@/lib/paypal";
 
 export async function POST(request: Request) {
-  const identity = authenticateTelegramRequest(request);
+  const identity = await authenticateTelegramRequest(request);
   if (!identity) return NextResponse.json({ error: "Telegram authentication required" }, { status: 401 });
   const secret = process.env.PAYPAL_OAUTH_STATE_SECRET;
   if (!secret) return NextResponse.json({ error: "PayPal login is not configured" }, { status: 503 });

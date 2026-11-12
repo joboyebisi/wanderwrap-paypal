@@ -1,6 +1,7 @@
-import { NextResponse } from "next/server";
+import { after, NextResponse } from "next/server";
 import { runCircleHarness } from "@/lib/agents/harness";
 import { listChatEvents, registerImportantEvent } from "@/lib/agents/events";
+import { claimTelegramUpdate } from "@/lib/telegram-updates";
 
 declare global {
   // eslint-disable-next-line no-var
@@ -20,17 +21,9 @@ async function sendMessage(token: string, chatId: number, text: string, replyMar
   });
 }
 
-export async function POST(request: Request) {
-  const token = process.env.TELEGRAM_BOT_TOKEN;
-  const expectedSecret = process.env.TELEGRAM_WEBHOOK_SECRET;
-  if (!token) return NextResponse.json({ error: "Bot is not configured" }, { status: 503 });
-  if (expectedSecret && request.headers.get("x-telegram-bot-api-secret-token") !== expectedSecret) {
-    return NextResponse.json({ error: "Invalid webhook secret" }, { status: 401 });
-  }
-
-  const update = await request.json();
+async function handleTelegramUpdate(token: string, update: Record<string, any>) {
   const message = update.message;
-  if (!message?.chat?.id) return NextResponse.json({ ok: true });
+  if (!message?.chat?.id) return;
   const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
   const text = message.text || "";
   const chatKey = String(message.chat.id);
@@ -43,32 +36,32 @@ export async function POST(request: Request) {
       await registerImportantEvent({ chatId: chatKey, recipient: match[1].trim(), occasion: match[2].trim(), date: match[3], recurrence: "yearly", reminderDays: [21, 14, 7], createdBy: String(message.from?.id || "unknown") });
       await sendMessage(token, message.chat.id, `🗓️ I’ll remember <b>${match[1].trim()}’s ${match[2].trim()}</b> on ${match[3]} and suggest a Circle before the day.`);
     }
-    return NextResponse.json({ ok: true });
+    return;
   }
 
   if (text.startsWith("/events")) {
     const events = await listChatEvents(chatKey);
     await sendMessage(token, message.chat.id, events.length ? `🗓️ <b>Important dates</b>\n\n${events.map((event) => `• ${event.recipient} — ${event.occasion}, ${event.date}`).join("\n")}` : "No important dates saved yet. Add one with <code>/remember Sarah, birthday, 2026-12-18</code>.");
-    return NextResponse.json({ ok: true });
+    return;
   }
 
   if (text.startsWith("/privacy")) {
     await sendMessage(token, message.chat.id, "🔐 <b>How WanderWrap handles group context</b>\n\nI only look for gift-relevant preferences after the group enables analysis. I avoid sensitive traits, keep contribution amounts private, and never purchase or release funds without an organiser’s approval. Use /analyse_gifts to opt in or /stop_analysis at any time.");
-    return NextResponse.json({ ok: true });
+    return;
   }
 
   if (text.startsWith("/analyse_gifts")) {
     memory.consented.add(chatKey);
     memory.messages.set(chatKey, []);
     await sendMessage(token, message.chat.id, "✨ <b>Gift-only analysis is on.</b>\n\nFrom now on, Sage can use non-sensitive preference clues shared in this group to improve gift ideas. I’ll keep at most the latest 40 relevant messages in this prototype. Anyone can use /stop_analysis.");
-    return NextResponse.json({ ok: true });
+    return;
   }
 
   if (text.startsWith("/stop_analysis")) {
     memory.consented.delete(chatKey);
     memory.messages.delete(chatKey);
     await sendMessage(token, message.chat.id, "Gift analysis is off and the prototype message buffer for this group has been cleared.");
-    return NextResponse.json({ ok: true });
+    return;
   }
 
   if (text.startsWith("/circle") || text.startsWith("/gift")) {
@@ -102,7 +95,34 @@ export async function POST(request: Request) {
       "I can help organise a group gift. Tap below to open WanderWrap Circles.",
       { inline_keyboard: [[{ text: "Open Circles", web_app: { url: appUrl } }], [{ text: "How privacy works", callback_data: "privacy" }]] });
   }
-  return NextResponse.json({ ok: true });
+}
+
+export async function POST(request: Request) {
+  const token = process.env.TELEGRAM_BOT_TOKEN;
+  const expectedSecret = process.env.TELEGRAM_WEBHOOK_SECRET;
+  if (!token) return NextResponse.json({ error: "Bot is not configured" }, { status: 503 });
+  if (!expectedSecret || request.headers.get("x-telegram-bot-api-secret-token") !== expectedSecret) {
+    return NextResponse.json({ error: "Invalid webhook secret" }, { status: 401 });
+  }
+  const contentLength = Number(request.headers.get("content-length") || 0);
+  if (contentLength > 1_000_000) return NextResponse.json({ error: "Payload too large" }, { status: 413 });
+
+  let update: Record<string, any>;
+  try {
+    update = await request.json();
+  } catch {
+    return NextResponse.json({ error: "Invalid Telegram update" }, { status: 400 });
+  }
+  if (!await claimTelegramUpdate(Number(update.update_id))) return NextResponse.json({ ok: true, duplicate: true });
+
+  after(async () => {
+    try {
+      await handleTelegramUpdate(token, update);
+    } catch (error) {
+      console.error("Telegram update processing failed", error);
+    }
+  });
+  return NextResponse.json({ ok: true, accepted: true }, { status: 202 });
 }
 
 export function GET() {

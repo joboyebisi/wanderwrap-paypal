@@ -9,5 +9,8 @@ Production rules:
 - `ALLOW_DEMO_AUTH` must be `false`.
 - AWS workloads use IAM roles rather than static access keys.
 - PayPal and Telegram webhook signatures are verified.
+- Telegram Mini App identity is derived only from signed, unexpired init data; request bodies cannot select another group.
+- Telegram webhook update IDs are claimed idempotently before background processing.
 - Secrets are loaded from AWS Secrets Manager.
 - Agent side effects require the matching persisted human approval.
+- DynamoDB point-in-time recovery and deletion protection are enabled for production data.

@@ -5,7 +5,7 @@ import { authenticateTelegramRequest } from "@/lib/telegram-auth";
 
 export async function POST(request: Request) {
   try {
-    if (!authenticateTelegramRequest(request)) return NextResponse.json({ error: "Telegram authentication required" }, { status: 401 });
+    if (!await authenticateTelegramRequest(request)) return NextResponse.json({ error: "Telegram authentication required" }, { status: 401 });
     const { orderId } = await request.json();
     if (!orderId || typeof orderId !== "string") {
       return NextResponse.json({ error: "A PayPal order ID is required" }, { status: 400 });
