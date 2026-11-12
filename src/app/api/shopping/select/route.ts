@@ -1,7 +1,8 @@
 import crypto from "node:crypto";
-import { NextResponse } from "next/server";
+import { after, NextResponse } from "next/server";
 import { campaignStore } from "@/lib/agents/store";
 import { authenticateTelegramRequest } from "@/lib/telegram-auth";
+import { notifyGiftSelected } from "@/lib/circle-notifications";
 
 export async function POST(request: Request) {
   const identity = await authenticateTelegramRequest(request);
@@ -16,5 +17,6 @@ export async function POST(request: Request) {
   campaign.updatedAt = new Date().toISOString();
   campaign.traces.push({ id: crypto.randomUUID(), agent: "gift-curator", label: "Gift direction selected", summary: `${product.title} is now shown with the contribution and recipient claim journeys. Price and availability must be rechecked before purchase.`, status: "complete", at: campaign.updatedAt });
   await campaignStore.save(campaign);
+  after(() => notifyGiftSelected(campaign.id, product.id, product.title));
   return NextResponse.json({ campaign });
 }

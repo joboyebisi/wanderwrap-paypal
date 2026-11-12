@@ -96,6 +96,7 @@ export interface CircleCampaign {
   slug: string;
   chatId: string;
   organizerId?: string;
+  recipientEmail?: string;
   recipient: string;
   occasion: string;
   eventDate: string;
@@ -129,10 +130,12 @@ export interface HarnessInput {
   eventDate?: string;
   targetAmount?: number;
   expectedContributors?: number;
+  recipientEmail?: string;
   messageHistory?: string[];
   consentToAnalyse?: boolean;
   skipChatAnalysis?: boolean;
   campaignId?: string;
+  forceNew?: boolean;
 }
 
 export interface HarnessResult {

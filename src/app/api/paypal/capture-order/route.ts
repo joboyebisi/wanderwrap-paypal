@@ -1,7 +1,8 @@
-import { NextResponse } from "next/server";
+import { after, NextResponse } from "next/server";
 import { capturePayPalOrder } from "@/lib/paypal";
 import { recordCompletedCapture } from "@/lib/paypal-ledger";
 import { authenticateTelegramRequest } from "@/lib/telegram-auth";
+import { notifyContributionCompleted } from "@/lib/circle-notifications";
 
 export async function POST(request: Request) {
   try {
@@ -11,7 +12,8 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "A PayPal order ID is required" }, { status: 400 });
     }
     const capture = await capturePayPalOrder(orderId);
-    await recordCompletedCapture(capture);
+    const completed = await recordCompletedCapture(capture);
+    if (completed?.newlyCompleted) after(() => notifyContributionCompleted(completed.contribution));
     return NextResponse.json(capture);
   } catch (error) {
     return NextResponse.json({ error: error instanceof Error ? error.message : "Could not capture order" }, { status: 500 });

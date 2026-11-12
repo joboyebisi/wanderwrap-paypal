@@ -6,6 +6,7 @@ import { campaignStore } from "@/lib/agents/store";
 import { upsertCircleMember } from "@/lib/circle-members";
 import { getCircleFunding } from "@/lib/paypal-ledger";
 import { addBotToGroupLink, circleDmOptInLink, circleMiniAppLink, escapeTelegramHtml, mainMiniAppLink } from "@/lib/telegram-bot";
+import { notifyCircleCreated } from "@/lib/circle-notifications";
 
 declare global {
   // eslint-disable-next-line no-var
@@ -132,14 +133,17 @@ async function handleTelegramUpdate(token: string, update: Record<string, any>) 
 
   if (text.startsWith("/circle") || text.startsWith("/gift")) {
     const prompt = text.replace(/^\/(circle|gift)(@\w+)?/, "").trim();
-    if (!prompt) {
-      await sendMessage(token, message.chat.id, "Use <code>/circle Sarah's birthday on 2026-12-18, £10, 1 friend</code>. I’ll create the Circle and return group and private-update links.");
+    const recipientEmail = prompt.match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i)?.[0]?.toLowerCase();
+    if (!prompt || !recipientEmail) {
+      await sendMessage(token, message.chat.id, "Include the private gift-delivery email when you create the link:\n\n<code>/circle Sarah's birthday on 2026-12-18, £10, 2 friends, sarah@example.com</code>\n\nOnly the organiser can use it to send the final reveal. Contributors never see it.");
       return;
     }
     const result = await runCircleHarness({
       chatId: chatKey, actorId: String(message.from?.id || "unknown"), prompt,
       consentToAnalyse: memory.consented.has(chatKey), messageHistory: memory.messages.get(chatKey) ?? [],
+      recipientEmail, forceNew: true,
     });
+    after(() => notifyCircleCreated(result.campaign.id));
     await sendMessage(token, message.chat.id, `🎁 <b>${result.campaign.recipient}’s ${result.campaign.occasion} Circle</b>\n\n${result.reply}\n\nShare this message so each person can open the exact Circle and opt into private updates.`, {
       inline_keyboard: [[{ text: "Open Circle ✨", url: circleMiniAppLink(result.campaign.id) }], [{ text: "Research live gifts 🔎", url: circleMiniAppLink(result.campaign.id) }], [{ text: "Get private updates", url: circleDmOptInLink(result.campaign.id) }], [{ text: "Privacy & consent", callback_data: "privacy" }]],
     });

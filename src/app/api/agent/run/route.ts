@@ -1,6 +1,7 @@
-import { NextResponse } from "next/server";
+import { after, NextResponse } from "next/server";
 import { runCircleHarness } from "@/lib/agents/harness";
 import { authenticateTelegramRequest } from "@/lib/telegram-auth";
+import { notifyCircleCreated } from "@/lib/circle-notifications";
 
 export async function POST(request: Request) {
   try {
@@ -9,7 +10,9 @@ export async function POST(request: Request) {
     const body = await request.json();
     if (!body.prompt) return NextResponse.json({ error: "prompt is required" }, { status: 400 });
     const chatId = identity.demo ? (body.chatId || "telegram-demo") : (identity.chatId || identity.chatInstance || `user:${identity.id}`);
-    return NextResponse.json(await runCircleHarness({ ...body, chatId, actorId: identity.id }));
+    const result = await runCircleHarness({ ...body, chatId, actorId: identity.id });
+    after(() => notifyCircleCreated(result.campaign.id));
+    return NextResponse.json(result);
   } catch (error) {
     return NextResponse.json({ error: error instanceof Error ? error.message : "Agent run failed" }, { status: 500 });
   }

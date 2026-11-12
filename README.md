@@ -47,7 +47,7 @@ The current sandbox build completes the journey through a verified contribution 
 
 | Command | Purpose |
 | --- | --- |
-| `/circle Sarah's birthday next Friday, £160` | Start an agent-planned Circle |
+| `/circle Sarah's birthday on 2026-12-18, £160, 8 friends, sarah@example.com` | Start a Circle with a private recipient handoff address |
 | `/remember Sarah, birthday, 2026-12-18` | Save an important date with gentle reminders |
 | `/events` | Show remembered moments for the group |
 | `/analyse_gifts` | Explicitly enable bounded, gift-only message analysis |
@@ -98,7 +98,10 @@ The custom harness—not the model—owns state transitions, tool execution, ide
 - **Return:** WanderWrap captures server-side and brings the member back to the active Circle.
 - **Ledger:** only verified `COMPLETED` captures increase a campaign total. A Circle is a virtual ledger—not a bank account or crypto wallet.
 - **Privacy:** group members see the aggregate goal, never another contributor's amount.
+- **Updates:** the organiser is enrolled at creation; a contributor receives a private amount receipt, while opted-in members and the group receive aggregate progress only. Browser-return and webhook notifications are deduplicated.
 - **Claim:** Ribbon sends an expiring private reveal by Amazon SES. Penny releases money only after PayPal Payouts is enabled and item-level status is verified.
+
+The private recipient email and optional interest clues are collected only in the organiser's creation brief. Participant API responses exclude that email and the raw organiser-supplied clues.
 
 ## Technology
 
@@ -182,9 +185,8 @@ Please report vulnerabilities according to [SECURITY.md](SECURITY.md).
 
 ## Project status
 
-The product is ready for sandbox integration testing. The live development environment has Telegram, DynamoDB, Bedrock permissions, PayPal collection credentials, a DKIM-verified SES domain, and SES production sending access configured. Channel3 code and UI are ready but remain visibly unconfigured until a server-side API key is added. Remaining account-level work is:
+The product is ready for sandbox integration testing. The live development environment has Telegram, DynamoDB, Bedrock permissions, PayPal collection credentials, a DKIM-verified SES domain, SES production sending access, and server-side Channel3 search configured. Remaining account-level work is:
 
-- add `CHANNEL3_API_KEY` locally and to the AWS development secret, then deploy the new revision;
 - enable Payouts on the existing PayPal Sandbox Merchant app and wait for the updated OAuth scope;
 - subscribe the existing PayPal webhook to payout batch and item events;
 - record and verify the two-account Telegram end-to-end demo.

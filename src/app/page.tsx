@@ -47,6 +47,11 @@ export default function Home() {
   const [researchSourceUrl, setResearchSourceUrl] = useState("");
   const [researchConsent, setResearchConsent] = useState(false);
   const [researchError, setResearchError] = useState("");
+  const [circleRecipient, setCircleRecipient] = useState(TEST_CIRCLE.recipient);
+  const [circleOccasion, setCircleOccasion] = useState(TEST_CIRCLE.occasion);
+  const [circleDate, setCircleDate] = useState(TEST_CIRCLE.eventDate);
+  const [circleTarget, setCircleTarget] = useState(String(TEST_CIRCLE.targetAmount));
+  const [circleContributors, setCircleContributors] = useState(String(TEST_CIRCLE.expectedContributors));
 
   const showToast = useCallback((message: string) => {
     setToast(message);
@@ -67,6 +72,7 @@ export default function Home() {
     const result = await response.json();
     if (result.campaign) {
       setCampaign(result.campaign);
+      setRecipientEmail(result.campaign.recipientEmail || "");
       setCircleLinks(result.links);
       await refreshFunding(result.campaign.id);
     }
@@ -124,7 +130,8 @@ export default function Home() {
       if (startParam?.startsWith("paid_") || paypalStatus === "success") {
         setPaypalConnected(true);
         showToast("PayPal returned successfully. Confirming the capture…");
-        window.setTimeout(() => void loadCircle(), 2500);
+        window.setTimeout(() => void loadCircle(linkedCircleId), 1200);
+        window.setTimeout(() => void loadCircle(linkedCircleId), 3500);
       }
     });
   }, [loadCircle, refreshPayPalStatus, showToast]);
@@ -133,7 +140,7 @@ export default function Home() {
     window.location.assign(telegramLaunchUrl);
   }
 
-  const target = campaign?.targetAmount ?? TEST_CIRCLE.targetAmount;
+  const target = campaign?.targetAmount ?? Number(circleTarget || TEST_CIRCLE.targetAmount);
   const progress = Math.min(100, Math.round((funding.total / target) * 100));
   const fullyFunded = funding.total >= target;
   const validAmount = useMemo(() => Number(amount) >= 1 && Number(amount) <= 500, [amount]);
@@ -141,23 +148,46 @@ export default function Home() {
   const selectedProduct = campaign?.productRecommendations?.find((product) => product.id === campaign.selectedProductId) ?? campaign?.productRecommendations?.[0];
 
   async function activateTestCircle() {
+    const targetAmount = Number(circleTarget);
+    const expectedContributors = Number(circleContributors);
+    if (!circleRecipient.trim() || !circleOccasion.trim() || !circleDate || !recipientEmail.trim()) {
+      showToast("Add the recipient, event date and delivery email");
+      return;
+    }
     setBusy(true);
     try {
       const response = await fetch("/api/agent/run", {
         method: "POST",
         headers: { "Content-Type": "application/json", ...telegramAuthHeaders() },
         body: JSON.stringify({
-          ...TEST_CIRCLE,
-          prompt: `Create a ${TEST_CIRCLE.occasion} Circle for ${TEST_CIRCLE.recipient} on ${TEST_CIRCLE.eventDate} with a £${TEST_CIRCLE.targetAmount} target for one contributor`,
+          recipient: circleRecipient.trim(),
+          occasion: circleOccasion.trim(),
+          eventDate: circleDate,
+          targetAmount,
+          expectedContributors,
+          recipientEmail: recipientEmail.trim(),
+          prompt: `Create a ${circleOccasion} Circle for ${circleRecipient} on ${circleDate} with a £${targetAmount} target for ${expectedContributors} contributors`,
           skipChatAnalysis: true,
           messageHistory: [],
+          forceNew: true,
         }),
       });
       const result = await response.json();
       if (!response.ok) throw new Error(result.error || "Could not activate the Circle");
-      setCampaign(result.campaign);
-      await loadCircle(result.campaign.id);
-      showToast("Your live sandbox Circle is ready");
+      let createdCampaign = result.campaign as CircleCampaign;
+      if (researchClues.trim() && researchConsent) {
+        const researchResponse = await fetch("/api/shopping/research", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", ...telegramAuthHeaders() },
+          body: JSON.stringify({ circleId: createdCampaign.id, publicClues: researchClues, sourceUrl: researchSourceUrl, consent: true }),
+        });
+        const researchResult = await researchResponse.json();
+        if (researchResponse.ok) createdCampaign = researchResult.campaign;
+        else setResearchError(researchResult.error || "Circle created, but gift research needs another try");
+      }
+      setCampaign(createdCampaign);
+      await loadCircle(createdCampaign.id);
+      showToast("Circle link, recipient handoff and updates are ready");
     } catch (error) {
       showToast(error instanceof Error ? error.message : "Could not activate the Circle");
     } finally {
@@ -259,6 +289,19 @@ export default function Home() {
     else { await navigator.clipboard.writeText(circleLinks.miniApp); showToast("Circle link copied"); }
   }
 
+  function startNewCircle() {
+    setCampaign(null);
+    setFunding({ total: 0, contributorCount: 0 });
+    setCircleLinks(null);
+    setRecipientEmail("");
+    setResearchClues("");
+    setResearchSourceUrl("");
+    setResearchConsent(false);
+    setResearchError("");
+    setClaimSent(false);
+    showToast("New Circle brief ready");
+  }
+
   async function sendRecipientClaim() {
     if (!campaign || !recipientEmail) return;
     setBusy(true);
@@ -327,7 +370,7 @@ export default function Home() {
     }
   }
 
-  const displayed = campaign ?? TEST_CIRCLE;
+  const displayed = campaign ?? { recipient: circleRecipient || TEST_CIRCLE.recipient, occasion: circleOccasion || TEST_CIRCLE.occasion, eventDate: circleDate || TEST_CIRCLE.eventDate, targetAmount: target, expectedContributors: Number(circleContributors || 1) };
 
   return <main className="app-shell">
     <div className="ambient ambient-one"/><div className="ambient ambient-two"/>
@@ -354,26 +397,39 @@ export default function Home() {
         <p className="occasion">{displayed.recipient.toUpperCase()}’S {displayed.occasion.toUpperCase()} · {displayed.eventDate}</p>
         <h1>{firstName}, let’s make<br/><em>{displayed.recipient} smile.</em></h1>
         <p>You’re the first gifter in this Circle. Your sandbox contribution is the only amount that will move the total.</p>
-        <div className="circle-chips"><span>🎯 £{target} goal</span><span>👤 1 gifter</span><span>🔒 Private amounts</span></div>
+        <div className="circle-chips"><span>🎯 £{target} goal</span><span>👤 {displayed.expectedContributors} gifter{displayed.expectedContributors === 1 ? "" : "s"}</span><span>🔒 Private amounts</span></div>
       </div>
 
       <section className="agent-console">
         <div className="agent-console-head"><div className="wrap-orb">W<span>✦</span></div><div><span>WRAP · CIRCLE CONDUCTOR</span><b>{campaign ? "Your Circle is ready" : "Ready to bring everyone together"}</b></div><button onClick={() => setShowDetails(!showDetails)}>{showDetails ? "−" : "+"}</button></div>
         <p>{campaign ? "Your Circle is live. Approve funding, share the invite, then make the first secure sandbox contribution." : `I’ve prepared a simple Circle for ${displayed.recipient}. Start it when you’re ready — no one is charged automatically.`}</p>
-        {!campaign && <button className="agent-action" disabled={!telegramReady || busy} onClick={activateTestCircle}>{busy ? "Creating…" : `Start ${displayed.recipient}’s Circle`}<span>✨</span></button>}
+        {!campaign && <div className="agent-success"><span>1</span><div><b>Complete the Circle brief below</b><small>Wrap will create the link, research gifts and remember the recipient handoff.</small></div></div>}
         {campaign?.pendingApproval === "open_funding" && <div className="approval-box"><div><span>YOUR APPROVAL</span><b>Open the £{campaign.targetAmount} collection?</b><small>No charge occurs until you approve in PayPal.</small></div><button onClick={approveFunding}>Approve</button></div>}
         {campaign && !campaign.pendingApproval && <div className="agent-success"><span>✓</span><div><b>Funding is open</b><small>Only verified PayPal captures count.</small></div></div>}
         {showDetails && campaign && <div className="agent-team">{campaign.traces.map((trace) => <div key={trace.id} className={trace.status === "complete" ? "complete" : ""}><span>✦</span><p><b>{trace.label}</b><small>{trace.summary}</small></p><i>{trace.status === "complete" ? "✓" : "·"}</i></div>)}</div>}
       </section>
 
-      {campaign && <section className="research-card">
-        <div className="research-heading"><div className="scout-orb">🔎</div><div><span>SCOUT · LIVE GIFT RESEARCH</span><h2>Turn public clues into a delightful shortlist</h2></div><span className="channel3-pill">POWERED BY CHANNEL3</span></div>
-        <p className="research-intro">Share only gift-relevant clues you have permission to use. WanderWrap does not crawl private profiles or fetch the source URL.</p>
-        <label className="simple-field"><span>What does {campaign.recipient} enjoy?</span><textarea value={researchClues} onChange={(event) => setResearchClues(event.target.value)} maxLength={2000} placeholder="Paste a public post excerpt, or describe their interests — e.g. pottery, warm interiors, weekend hikes…"/></label>
+      {!campaign && <section className="research-card creation-card">
+        <div className="research-heading"><div className="scout-orb">🎁</div><div><span>WRAP · CREATE A CIRCLE</span><h2>One brief. A fully coordinated gift.</h2></div><span className="channel3-pill">AGENT-ASSISTED</span></div>
+        <div className="creation-grid">
+          <label className="simple-field"><span>Who is the Circle for?</span><input value={circleRecipient} onChange={(event) => setCircleRecipient(event.target.value)} maxLength={80}/></label>
+          <label className="simple-field"><span>Occasion</span><input value={circleOccasion} onChange={(event) => setCircleOccasion(event.target.value)} maxLength={80}/></label>
+          <label className="simple-field"><span>Event date</span><input type="date" value={circleDate} onChange={(event) => setCircleDate(event.target.value)}/></label>
+          <label className="simple-field"><span>Gift target (£)</span><input inputMode="decimal" value={circleTarget} onChange={(event) => setCircleTarget(event.target.value.replace(/[^0-9.]/g, ""))}/></label>
+          <label className="simple-field"><span>Expected gifters</span><input inputMode="numeric" value={circleContributors} onChange={(event) => setCircleContributors(event.target.value.replace(/\D/g, ""))}/></label>
+          <label className="simple-field"><span>Recipient gift email</span><input type="email" value={recipientEmail} onChange={(event) => setRecipientEmail(event.target.value)} placeholder="recipient@example.com"/></label>
+        </div>
+        <div className="delivery-note"><span>✉️</span><div><b>Where the collected gift goes</b><small>When the target is reached, only the organiser can send the private reveal and claim link to this email. It is never shown to contributors.</small></div></div>
+        <p className="research-intro">Optional gift intelligence — add only gift-relevant clues you have permission to use. These fields disappear after creation.</p>
+        <label className="simple-field"><span>What does {circleRecipient || "the recipient"} enjoy? · optional</span><textarea value={researchClues} onChange={(event) => setResearchClues(event.target.value)} maxLength={2000} placeholder="e.g. pottery, warm interiors, weekend hikes, jazz and practical gifts…"/></label>
         <label className="simple-field"><span>Public source link · optional</span><input type="url" value={researchSourceUrl} onChange={(event) => setResearchSourceUrl(event.target.value)} placeholder="https://…"/></label>
-        <label className="research-consent"><input type="checkbox" checked={researchConsent} onChange={(event) => setResearchConsent(event.target.checked)}/><span><b>I have permission to use these clues</b><small>Only this gift-relevant summary is saved with the Circle.</small></span></label>
-        <button className="research-button" disabled={busy || !researchConsent || !researchClues.trim()} onClick={researchGifts}><span>✨</span> Find live gifts under £{campaign.targetAmount}</button>
+        {researchClues.trim() && <label className="research-consent"><input type="checkbox" checked={researchConsent} onChange={(event) => setResearchConsent(event.target.checked)}/><span><b>I have permission to use these clues</b><small>Only the gift-relevant summary is saved with the Circle.</small></span></label>}
+        <button className="research-button" disabled={!telegramReady || busy || !recipientEmail.trim() || Boolean(researchClues.trim() && !researchConsent)} onClick={activateTestCircle}><span>✨</span> {busy ? "Agents are preparing the Circle…" : "Create Circle & share link"}</button>
         {researchError && <div className="research-status"><span>🔌</span><div><b>Scout needs one connection</b><small>{researchError}</small></div></div>}
+      </section>}
+
+      {campaign && (campaign.giftProfile || campaign.productRecommendations?.length) ? <section className="research-card">
+        <div className="research-heading"><div className="scout-orb">🔎</div><div><span>SCOUT · GIFT SHORTLIST</span><h2>Live options from the creation brief</h2></div><span className="channel3-pill">POWERED BY CHANNEL3</span></div>
         {campaign.giftProfile && <div className="gift-profile">
           <div><span>🧠 SAGE · EVIDENCE-BOUND PROFILE</span><strong>{Math.round(campaign.giftProfile.confidence * 100)}% confidence</strong></div>
           <p>{campaign.giftProfile.summary}</p>
@@ -386,7 +442,7 @@ export default function Home() {
             <div className="product-copy"><span>{product.searchIntent || "Live gift"} · {product.availability} · {product.retailer}</span><h3>{product.title}</h3><p>{product.rationale}</p><div><strong>{product.currency === "GBP" ? "£" : `${product.currency} `}{product.price.toFixed(2)}</strong><button disabled={busy} onClick={() => void selectProduct(product.id)}>{product.id === campaign.selectedProductId ? "Chosen ✓" : "Choose"}</button></div></div>
           </article>)}
         </div>}
-      </section>}
+      </section> : null}
 
       <article className="gift-card">
         <div className="gift-visual">{selectedProduct?.imageUrl ? <Image className="selected-product-image" src={selectedProduct.imageUrl} alt={selectedProduct.imageAlt || selectedProduct.title} fill sizes="(max-width: 520px) 100vw, 520px" unoptimized/> : <span className="live-gift-emoji">{selectedGift?.emoji ?? "🎁"}</span>}</div>
@@ -399,13 +455,13 @@ export default function Home() {
         <div className="progress-track"><span style={{width:`${progress}%`}}/></div>
         <div className="funding-meta"><span><b>{funding.contributorCount}</b> verified contributor{funding.contributorCount === 1 ? "" : "s"}</span><span>£{Math.max(0, target - funding.total).toFixed(2)} to go</span></div>
         <div className="single-tester"><span className="avatar avatar-user">{firstName.slice(0, 1).toUpperCase()}</span><div><b>{funding.contributorCount ? `${firstName}, contribution verified` : `${firstName}, ready to test`}</b><small>No fictional contributors are included.</small></div></div>
-        {campaign && <div className="circle-link-actions"><button onClick={shareCircle}>Share Circle link</button><button className={subscribed ? "subscribed" : ""} onClick={subscribeToUpdates}>{subscribed ? "DM updates on ✓" : "Get DM updates"}</button></div>}
+        {campaign && <div className="circle-link-actions"><button onClick={shareCircle}>Share Circle link</button><button className={subscribed ? "subscribed" : ""} onClick={subscribeToUpdates}>{subscribed ? "DM updates on ✓" : "Get DM updates"}</button><button onClick={startNewCircle}>New Circle</button></div>}
         {campaign && !campaign.pendingApproval && !fullyFunded && <div className={paypalConnected ? "sandbox-helper linked" : "sandbox-helper"}><span>{paypalConnected ? "✅" : "🧪"}</span><div><b>{paypalConnected ? `PayPal linked${paypalIdentity?.name ? ` as ${paypalIdentity.name}` : ""}` : "Use a Personal Sandbox account"}</b><small>{paypalConnected ? "PayPal does not share a consumer balance with WanderWrap. Checkout will confirm an eligible balance or funding source before you approve payment." : "Your normal PayPal login will not work here. In the PayPal Developer Dashboard, open Testing Tools → Sandbox Accounts and use the generated Personal account email and password."}</small></div></div>}
-        {!fullyFunded && <><label className="test-amount"><span>Contribution</span><div>£ <input value={amount} onChange={(event) => setAmount(event.target.value.replace(/[^0-9.]/g,""))} inputMode="decimal"/></div></label><button className="primary-button" disabled={!campaign || Boolean(campaign?.pendingApproval) || !validAmount || busy} onClick={contribute}>{paypalConnected ? `Continue to PayPal · £${Number(amount || 0).toFixed(2)}` : `Link PayPal to contribute £${Number(amount || 0).toFixed(2)}`} <span>↗</span></button></>}
+        {!fullyFunded && <><label className="test-amount"><span>Contribution</span><div>£ <input value={amount} onChange={(event) => setAmount(event.target.value.replace(/[^0-9.]/g,""))} inputMode="decimal"/></div></label><button className="primary-button" disabled={!campaign || Boolean(campaign?.pendingApproval) || !validAmount || busy} onClick={contribute}>{paypalConnected ? `Pay £${Number(amount || 0).toFixed(2)} with PayPal` : `Link PayPal to pay £${Number(amount || 0).toFixed(2)}`} <span>↗</span></button></>}
         {fullyFunded && <><div className="target-reached"><span>✓</span><div><b>Target reached with verified money</b><small>Ribbon can now send the private reveal. Penny keeps payout locked until PayPal enables the required scope.</small></div></div>
           <div className="claim-invite">
             <span>RIBBON · RECIPIENT HANDOFF</span>
-            <label className="simple-field"><span>Test recipient email</span><input type="email" value={recipientEmail} onChange={(event) => setRecipientEmail(event.target.value)} placeholder="recipient@example.com"/></label>
+            {campaign?.recipientEmail ? <div className="delivery-note"><span>✉️</span><div><b>Reveal destination</b><small>{campaign.recipientEmail} · saved when this Circle was created</small></div></div> : <label className="simple-field"><span>Recipient email for this legacy Circle</span><input type="email" value={recipientEmail} onChange={(event) => setRecipientEmail(event.target.value)} placeholder="recipient@example.com"/></label>}
             <label className="simple-field"><span>Your message</span><textarea value={giftMessage} onChange={(event) => setGiftMessage(event.target.value)} maxLength={600}/></label>
             <button className="primary-button" disabled={busy || claimSent} onClick={sendRecipientClaim}>{claimSent ? "Private reveal sent ✓" : "Email the private reveal"} <span>✦</span></button>
             <small>Ribbon sends a transactional claim email from WanderWrap's DKIM-verified domain. Use an address you control for the sandbox payment test.</small>

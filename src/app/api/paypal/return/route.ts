@@ -1,6 +1,7 @@
-import { NextResponse } from "next/server";
+import { after, NextResponse } from "next/server";
 import { capturePayPalOrder } from "@/lib/paypal";
 import { recordCompletedCapture } from "@/lib/paypal-ledger";
+import { notifyContributionCompleted } from "@/lib/circle-notifications";
 
 export async function GET(request: Request) {
   const url = new URL(request.url);
@@ -12,7 +13,8 @@ export async function GET(request: Request) {
   if (!orderId) return NextResponse.redirect(`${fallback}?paypal=error`);
   try {
     const capture = await capturePayPalOrder(orderId);
-    await recordCompletedCapture(capture);
+    const completed = await recordCompletedCapture(capture);
+    if (completed?.newlyCompleted) after(() => notifyContributionCompleted(completed.contribution));
     return NextResponse.redirect(bot ? `https://t.me/${bot.replace(/^@/, "")}?startapp=paid_${encodeURIComponent(circle)}` : `${fallback}?paypal=success`);
   } catch {
     return NextResponse.redirect(`${fallback}?paypal=error`);

@@ -31,9 +31,11 @@ function newCampaign(input: HarnessInput): CircleCampaign {
   const expectedFromPrompt = input.prompt.match(/\b(\d+)\s+(?:friends?|people|contributors?|gifters?)\b/i)?.[1];
   const expectedContributors = Math.max(1, Math.min(500, Number(input.expectedContributors || expectedFromPrompt || 1)));
   const created = now();
+  const recipientEmail = input.recipientEmail?.trim().toLowerCase();
+  if (recipientEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(recipientEmail)) throw new Error("Add a valid recipient delivery email");
   return {
     id: crypto.randomUUID(), slug: `${recipient.toLowerCase()}-${Date.now().toString(36)}`, chatId: input.chatId,
-    organizerId: input.actorId,
+    organizerId: input.actorId, recipientEmail,
     recipient, occasion, eventDate, phase: "discovery", targetAmount, raisedAmount: 0, currency: "GBP",
     contributorCount: 0, expectedContributors, chatAnalysisConsent: false, personality: [], gifts: [], traces: [],
     createdAt: created, updatedAt: created,
@@ -50,7 +52,7 @@ function deterministicPersonality(history: string[]) {
 }
 
 export async function runCircleHarness(input: HarnessInput): Promise<HarnessResult> {
-  const existing = input.campaignId ? await campaignStore.get(input.campaignId) : await campaignStore.findByChat(input.chatId);
+  const existing = input.forceNew ? undefined : input.campaignId ? await campaignStore.get(input.campaignId) : await campaignStore.findByChat(input.chatId);
   const campaign = existing ?? newCampaign(input);
   campaign.traces.push(trace("conductor", "Intent understood", `A ${campaign.occasion.toLowerCase()} Circle for ${campaign.recipient} is being prepared.`));
 

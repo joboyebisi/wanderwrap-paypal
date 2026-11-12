@@ -1,10 +1,11 @@
 import crypto from "node:crypto";
-import { NextResponse } from "next/server";
+import { after, NextResponse } from "next/server";
 import { authenticateTelegramRequest } from "@/lib/telegram-auth";
 import { campaignStore } from "@/lib/agents/store";
 import { getCircleFunding } from "@/lib/paypal-ledger";
 import { createGiftClaim, setGiftClaimStatus } from "@/lib/claims";
 import { sendClaimInvitation } from "@/lib/agents/email-agent";
+import { notifyClaimSent } from "@/lib/circle-notifications";
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -14,10 +15,11 @@ export async function POST(request: Request) {
     if (!identity) return NextResponse.json({ error: "Telegram authentication required" }, { status: 401 });
     const body = await request.json();
     const circleId = String(body.circleId || "");
-    const recipientEmail = String(body.recipientEmail || "").trim().toLowerCase();
-    if (!circleId || !EMAIL_PATTERN.test(recipientEmail)) return NextResponse.json({ error: "A valid recipient email is required" }, { status: 400 });
+    if (!circleId) return NextResponse.json({ error: "A Circle is required" }, { status: 400 });
     const [campaign, funding] = await Promise.all([campaignStore.get(circleId), getCircleFunding(circleId)]);
     if (!campaign) return NextResponse.json({ error: "Circle not found" }, { status: 404 });
+    const recipientEmail = String(campaign.recipientEmail || body.recipientEmail || "").trim().toLowerCase();
+    if (!EMAIL_PATTERN.test(recipientEmail)) return NextResponse.json({ error: "This Circle needs a valid recipient delivery email" }, { status: 400 });
     if (campaign.organizerId && campaign.organizerId !== identity.id) return NextResponse.json({ error: "Only the Circle organiser can send the claim" }, { status: 403 });
     if (funding.total < campaign.targetAmount) return NextResponse.json({ error: "The verified target must be reached before a claim can be sent" }, { status: 409 });
     const rawMessages = Array.isArray(body.messages) ? body.messages : [];
@@ -47,6 +49,7 @@ export async function POST(request: Request) {
       campaign.phase = "reveal_ready";
       campaign.updatedAt = new Date().toISOString();
       await campaignStore.save(campaign);
+      after(() => notifyClaimSent(circleId));
       return NextResponse.json({ ok: true, status: "emailed", payoutEnabled: process.env.PAYPAL_PAYOUTS_ENABLED === "true" });
     } catch (error) {
       await setGiftClaimStatus(claim, "email_failed");
