@@ -15,7 +15,9 @@
     "dev": "next dev",
     "build": "next build --webpack",
     "start": "next start",
-    "check": "tsc --noEmit"
+    "check": "tsc --noEmit",
+    "telegram:configure": "node scripts/configure-telegram.mjs",
+    "paypal:verify": "node scripts/verify-paypal.mjs"
   },
   "dependencies": {
     "@aws-sdk/client-bedrock-runtime": "^3.936.0",

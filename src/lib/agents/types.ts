@@ -65,8 +65,14 @@ export interface HarnessInput {
   chatId: string;
   actorId: string;
   prompt: string;
+  recipient?: string;
+  occasion?: string;
+  eventDate?: string;
+  targetAmount?: number;
+  expectedContributors?: number;
   messageHistory?: string[];
   consentToAnalyse?: boolean;
+  skipChatAnalysis?: boolean;
   campaignId?: string;
 }
 

@@ -2,7 +2,7 @@
 
 ## Fast development environment
 
-`circles-build.yaml` creates an ECR repository and a small CodeBuild project that builds this public GitHub repository without requiring Docker locally. `circles-lambda-dev.yaml` then runs the container with Lambda Web Adapter behind an HTTP API, using DynamoDB and Bedrock on a pay-per-use basis. This development stack deliberately leaves Telegram and PayPal credentials unconfigured and enables browser demo authentication; never promote that setting to production.
+`circles-build.yaml` creates an ECR repository and a small CodeBuild project that builds this public GitHub repository without requiring Docker locally. `circles-lambda-dev.yaml` then runs the container with Lambda Web Adapter behind an HTTP API, using DynamoDB and Bedrock on a pay-per-use basis. The development stack resolves its PayPal and Telegram configuration from the `wanderwrap/circles/development` Secrets Manager secret and disables browser demo authentication.
 
 The original App Runner template remains available for an eligible existing App Runner account. The Lambda development path is the preferred way to get the current prototype online quickly.
 

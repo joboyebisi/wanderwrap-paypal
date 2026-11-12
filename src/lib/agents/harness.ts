@@ -3,28 +3,38 @@ import { askSpecialist } from "./bedrock-runtime";
 import { campaignStore } from "./store";
 import type { AgentId, AgentTrace, CircleCampaign, HarnessInput, HarnessResult } from "./types";
 
-const giftSeed = [
-  { id: "camera", name: "Instant camera bundle", price: 145, emoji: "📸", rationale: "Turns future trips into tangible memories everyone can share.", confidence: 92, kind: "physical" as const },
-  { id: "workshop", name: "Photography experience", price: 150, emoji: "🎟️", rationale: "A memorable day out built around her creative side.", confidence: 88, kind: "experience" as const },
-  { id: "travel-fund", name: "Adventure money gift", price: 160, emoji: "✈️", rationale: "Lets her choose what would make her next trip feel special.", confidence: 81, kind: "money" as const },
-];
-
 const now = () => new Date().toISOString();
 const trace = (agent: AgentId, label: string, summary: string, status: AgentTrace["status"] = "complete"): AgentTrace => ({ id: crypto.randomUUID(), agent, label, summary, status, at: now() });
 
 function parseRecipient(prompt: string) {
   const match = prompt.match(/\bfor\s+([A-Z][a-z]+)/) ?? prompt.match(/\bcelebrat(?:e|ing)\s+([A-Z][a-z]+)/) ?? prompt.match(/\b([A-Z][a-z]+)(?:'s)?\s+birthday\b/);
-  return match?.[1] || "Sarah";
+  return match?.[1];
+}
+
+function giftDirections(recipient: string, occasion: string, target: number, signals: string[]) {
+  const context = signals.length ? ` based on ${signals.join(" and ")}` : ` for their ${occasion.toLowerCase()}`;
+  return [
+    { id: "keepsake", name: `A personalised keepsake for ${recipient}`, price: Math.max(1, Math.round(target * 0.7)), emoji: "🎁", rationale: `A lasting, personal direction${context}. The group should confirm the exact item before purchase.`, confidence: 78, kind: "physical" as const },
+    { id: "experience", name: `A shared ${occasion.toLowerCase()} experience`, price: Math.max(1, Math.round(target * 0.9)), emoji: "✨", rationale: `A memory-first direction${context}. Scout will refine it after the group adds preferences.`, confidence: 74, kind: "experience" as const },
+    { id: "money-gift", name: `A flexible gift for ${recipient}`, price: target, emoji: "💛", rationale: "The group contributes toward the target and the recipient chooses how to use it. Release still requires organiser approval.", confidence: 70, kind: "money" as const },
+  ];
 }
 
 function newCampaign(input: HarnessInput): CircleCampaign {
-  const recipient = parseRecipient(input.prompt);
+  const recipient = input.recipient?.trim() || parseRecipient(input.prompt);
+  if (!recipient) throw new Error("Tell me who the Circle is for");
+  const targetFromPrompt = input.prompt.match(/£\s?(\d+(?:\.\d{1,2})?)/)?.[1];
+  const targetAmount = Number(input.targetAmount || targetFromPrompt || 0);
+  if (!Number.isFinite(targetAmount) || targetAmount < 1 || targetAmount > 10000) throw new Error("Set a target between £1 and £10,000");
+  const occasion = input.occasion?.trim() || (/wedding/i.test(input.prompt) ? "Wedding" : /farewell/i.test(input.prompt) ? "Farewell" : /graduation/i.test(input.prompt) ? "Graduation" : /birthday/i.test(input.prompt) ? "Birthday" : "Celebration");
+  const eventDate = input.eventDate?.trim() || input.prompt.match(/\b(\d{4}-\d{2}-\d{2}|next\s+\w+|tomorrow|in\s+\d+\s+days?)\b/i)?.[1] || "To be confirmed";
+  const expectedFromPrompt = input.prompt.match(/\b(\d+)\s+(?:friends|people|contributors|gifters)\b/i)?.[1];
+  const expectedContributors = Math.max(1, Math.min(500, Number(input.expectedContributors || expectedFromPrompt || 1)));
   const created = now();
   return {
     id: crypto.randomUUID(), slug: `${recipient.toLowerCase()}-${Date.now().toString(36)}`, chatId: input.chatId,
-    recipient, occasion: /wedding/i.test(input.prompt) ? "Wedding" : /farewell/i.test(input.prompt) ? "Farewell" : "Birthday",
-    eventDate: "Next Friday", phase: "discovery", targetAmount: 160, raisedAmount: 0, currency: "GBP",
-    contributorCount: 0, expectedContributors: 8, chatAnalysisConsent: false, personality: [], gifts: [], traces: [],
+    recipient, occasion, eventDate, phase: "discovery", targetAmount, raisedAmount: 0, currency: "GBP",
+    contributorCount: 0, expectedContributors, chatAnalysisConsent: false, personality: [], gifts: [], traces: [],
     createdAt: created, updatedAt: created,
   };
 }
@@ -35,7 +45,7 @@ function deterministicPersonality(history: string[]) {
   if (/photo|camera|film/.test(text)) signals.push("loves photography");
   if (/travel|trip|holiday|flight/.test(text)) signals.push("curious traveller");
   if (/experience|concert|museum|workshop/.test(text)) signals.push("values experiences");
-  return signals.length ? signals : ["creative", "adventure-loving", "thoughtful keepsake person"];
+  return signals;
 }
 
 export async function runCircleHarness(input: HarnessInput): Promise<HarnessResult> {
@@ -43,7 +53,7 @@ export async function runCircleHarness(input: HarnessInput): Promise<HarnessResu
   const campaign = existing ?? newCampaign(input);
   campaign.traces.push(trace("conductor", "Intent understood", `A ${campaign.occasion.toLowerCase()} Circle for ${campaign.recipient} is being prepared.`));
 
-  if (!input.consentToAnalyse && !campaign.chatAnalysisConsent) {
+  if (!input.consentToAnalyse && !input.skipChatAnalysis && !campaign.chatAnalysisConsent) {
     campaign.pendingApproval = "analyse_chat";
     campaign.traces.push(trace("recipient-insight", "Waiting for consent", "Chat analysis is paused until the organiser confirms.", "waiting"));
     await campaignStore.save(campaign);
@@ -56,20 +66,22 @@ export async function runCircleHarness(input: HarnessInput): Promise<HarnessResu
   const bedrockInsight = await askSpecialist("recipient-insight", `Recipient: ${campaign.recipient}. Consented excerpts: ${(input.messageHistory ?? []).join("\n")}. Summarise only safe gift-relevant signals.`);
   if (bedrockInsight) campaign.traces.push(trace("recipient-insight", "Bedrock synthesis", bedrockInsight.slice(0, 320)));
 
-  campaign.gifts = giftSeed;
+  campaign.gifts = giftDirections(campaign.recipient, campaign.occasion, campaign.targetAmount, campaign.personality);
   campaign.phase = "gift_selection";
   campaign.traces.push(trace("gift-curator", "Shortlist created", "Three distinct, budget-aware directions are ready for a group vote."));
   const bedrockCuration = await askSpecialist("gift-curator", `Create three gift directions for ${campaign.recipient}, ${campaign.personality.join(", ")}, budget £${campaign.targetAmount}.`);
   if (bedrockCuration) campaign.traces.push(trace("gift-curator", "Bedrock curation rationale", bedrockCuration.slice(0, 320)));
 
-  campaign.selectedGiftId = "camera";
+  campaign.selectedGiftId = campaign.gifts[0]?.id;
   campaign.phase = "funding";
   campaign.pendingApproval = "open_funding";
   campaign.traces.push(trace("circle-coordinator", "Contribution plan drafted", `£${campaign.targetAmount} target for ${campaign.expectedContributors} friends; suggested £20 each.`));
   campaign.traces.push(trace("treasury", "PayPal collection prepared", "Funding can open after organiser approval.", "waiting"));
   campaign.updatedAt = now();
   await campaignStore.save(campaign);
-  return { campaign, activeAgent: "conductor", reply: `Sage found ${campaign.personality.join(" and ")}. Scout’s strongest match is the instant camera bundle. Rally has a comfortable £20 suggestion for eight friends, and Penny is ready to open PayPal contributions when you approve.`, suggestions: ["Approve funding", "Show all three gifts", "Adjust the target"] };
+  const signalSummary = campaign.personality.length ? `Sage found ${campaign.personality.join(" and ")}. ` : "No chat-derived preferences were supplied, so Scout kept the directions broad. ";
+  const suggestedAmount = Math.ceil(campaign.targetAmount / campaign.expectedContributors);
+  return { campaign, activeAgent: "conductor", reply: `${signalSummary}Scout prepared three directions for ${campaign.recipient}. Rally suggests about £${suggestedAmount} each for ${campaign.expectedContributors} contributor${campaign.expectedContributors === 1 ? "" : "s"}, and Penny is ready to open PayPal contributions when you approve.`, suggestions: ["Approve funding", "Show all three directions", "Adjust the target"] };
 }
 
 export async function approveCampaignAction(campaignId: string, approval: string) {
